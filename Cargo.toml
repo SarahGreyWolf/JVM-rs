@@ -1,8 +1,8 @@
 [package]
-name = "<SET_PACKAGE_NAME>"
+name = "JVM-rs"
 version = "0.1.0"
 edition = "2021"
-license-file = "LICENSE.txt"
+license-file = "LICENSE"
 authors = ["SarahGreyWolf <m.sarahgreywolf@outlook.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
