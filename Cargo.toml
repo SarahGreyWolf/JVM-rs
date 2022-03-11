@@ -1,5 +1,5 @@
 [package]
-name = "JVM-rs"
+name = "jvm_rs"
 version = "0.1.0"
 edition = "2021"
 license-file = "LICENSE"
@@ -8,3 +8,4 @@ authors = ["SarahGreyWolf <m.sarahgreywolf@outlook.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+byteorder = "1.4.3"
