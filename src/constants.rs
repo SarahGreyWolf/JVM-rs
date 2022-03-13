@@ -79,12 +79,16 @@ impl Utf8 {
             bytes
         })
     }
+
+    pub fn get_string(&self) -> std::string::String {
+        std::string::String::from(from_utf8(&self.2).unwrap_or("Could not create from utf8"))
+    }
 }
 
 impl std::fmt::Debug for Utf8 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Kotlin had some weird UTF8 constant that couldn't actually be turned into UTF8 so
-        write!(f, "\"{}\"", from_utf8(&self.2).unwrap_or("Could not create from utf8"))
+        write!(f, "\"{}\"", self.get_string())
     }
 }
 
