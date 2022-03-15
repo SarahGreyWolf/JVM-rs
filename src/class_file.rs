@@ -31,6 +31,7 @@ pub enum ConstantPool {
     InvokeDynamic(constants::InvokeDynamic),
     Module(constants::Module),
     Package(constants::Package),
+    Unknown
 }
 
 /// [Attributes](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A1244%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
@@ -131,10 +132,9 @@ impl Default for MethodInfo {
 impl MethodInfo {
     pub fn new(flags: u16, name_index: u16, descriptor_index: u16, attributes_count: u16, cursor: &mut Cursor<&[u8]>, constant_pool: &Vec<ConstantPool>)
         -> Result<MethodInfo, Box<dyn Error>> {
-        println!("Index: {:#}", name_index);
-        if let ConstantPool::Utf8(n) = &constant_pool[name_index as usize-1] {
-            println!("Name: {}", n.get_string());
-        }
+        // if let ConstantPool::Utf8(n) = &constant_pool[name_index as usize-1] {
+        //     println!("Name: {}", n.get_string());
+        // }
         let mut attributes = Vec::with_capacity(attributes_count as usize);
         read_attributes(constant_pool, &mut attributes, cursor)?;
         Ok(MethodInfo {
@@ -152,7 +152,7 @@ impl MethodInfo {
         println!("\tName: {:?}", constant_pool[self.name_index as usize]);
         println!("\tDescriptor: {:?}", constant_pool[self.descriptor_index as usize]);
         println!("\tAttribute Count: {:?}", self.attributes_count);
-        println!("\tAttributes: {:?}", self.attributes);
+        println!("\tAttributes: {:#?}", self.attributes);
         println!("}}");
     }
 }
@@ -317,26 +317,33 @@ impl ClassFile {
     pub fn from_bytes(bytes: &[u8]) -> Result<ClassFile, Box<dyn Error>> {
         let mut cursor = Cursor::new(bytes);
         let magic = cursor.read_u32::<BE>()?;
+        println!("Magic: {:#04x}", magic);
         let minor_version = cursor.read_u16::<BE>()?;
         let major_version = cursor.read_u16::<BE>()?;
+        println!("Java Version: {}.{}", major_version, minor_version);
         let constant_pool_count = cursor.read_u16::<BE>()?;
         let constant_pool = {
             let mut pool = Vec::with_capacity((constant_pool_count - 1) as usize);
+            pool.push(ConstantPool::Unknown);
             constants::read_constant_pool(&mut pool, &mut cursor)?;
-            println!("Size: {}\n{:#?}", pool.len(), pool);
             pool
         };
+        println!("Constant Pool: Size {}\n{:#?}", constant_pool.len(), constant_pool);
         let access_flags = ClassAccessFlags::from_u16(cursor.read_u16::<BE>()?);
+        println!("Class Access Flags: {:?}", access_flags);
         let this_class = cursor.read_u16::<BE>()?;
+        println!("This Class Index: {this_class}");
         let super_class = cursor.read_u16::<BE>()?;
+        println!("Super Class Index: {this_class}");
         let interfaces_count = cursor.read_u16::<BE>()?;
         let interfaces = {
-            let mut interfaces: Vec<u16> = vec![];
+            let mut interfaces: Vec<u16> = Vec::with_capacity(interfaces_count as usize);
             for _ in 0..interfaces_count {
                 interfaces.push(cursor.read_u16::<BE>()?);
             }
             interfaces
         };
+        println!("Interfaces: Size {}\n\t{:?}", interfaces.len(), interfaces);
         let field_count = cursor.read_u16::<BE>()?;
         let fields = {
             let mut fields = Vec::with_capacity(field_count as usize);
@@ -357,7 +364,6 @@ impl ClassFile {
         let methods = {
             let mut methods = Vec::with_capacity(methods_count as usize);
             for _ in 0..methods.capacity() {
-                println!("Cursor Pos: {:#04x}", cursor.position());
                 methods.push(MethodInfo::new(
                     cursor.read_u16::<BE>()?,
                     cursor.read_u16::<BE>()?,
@@ -447,14 +453,16 @@ pub(crate) fn read_attributes(
     for _ in 0..size {
         let name_index = cursor.read_u16::<BE>()?;
         let name = &constant_pool[name_index as usize];
+        let length = cursor.read_u32::<BE>()?;
+        println!("Attribute Name Index: {:#}, Attribute Size: {}", name_index, length);
         if let ConstantPool::Utf8(n) = name {
             println!("{}", n.get_string());
             let attribute = match n.get_string().as_str() {
                 "ConstantValue" => AttributeInfo::ConstantValue(
-                    attributes::ConstantValue::new(name_index, cursor.read_u32::<BE>()?, cursor.read_u16::<BE>()?)
+                    attributes::ConstantValue::new(name_index, length, cursor.read_u16::<BE>()?)
                 ),
                 "Code" => AttributeInfo::Code(
-                    attributes::Code::new(name_index, &constant_pool, cursor)?
+                    attributes::Code::new(name_index, length, &constant_pool, cursor)?
                 ),
                 // "StackMapTable" => AttributeInfo::StackMapTable(
                     
@@ -483,7 +491,7 @@ pub(crate) fn read_attributes(
                 "LineNumberTable" => AttributeInfo::LineNumberTable(
                     attributes::LineNumberTable::new(
                         name_index,
-                        cursor.read_u32::<BE>()?,
+                        length,
                         cursor.read_u16::<BE>()?,
                         cursor
                     )?

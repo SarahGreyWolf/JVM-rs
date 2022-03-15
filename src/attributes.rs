@@ -87,8 +87,7 @@ pub struct Code(
 
 
 impl Code {
-    pub fn new(attribute_name_index: u16, constant_pool: &Vec<ConstantPool>, cursor: &mut Cursor<&[u8]>) -> Result<Code, Box<dyn Error>> {
-        let attribute_length = cursor.read_u32::<BE>()?;
+    pub fn new(attribute_name_index: u16, attribute_length: u32, constant_pool: &Vec<ConstantPool>, cursor: &mut Cursor<&[u8]>) -> Result<Code, Box<dyn Error>> {
         let max_stack = cursor.read_u16::<BE>()?;
         let max_locals = cursor.read_u16::<BE>()?;
         let code_length = cursor.read_u32::<BE>()?;
