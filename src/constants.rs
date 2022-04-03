@@ -68,6 +68,12 @@ pub struct Utf8(
     Vec<u8>,
 );
 
+impl From<&str> for Utf8 {
+    fn from(input: &str) -> Self {
+        Utf8(1, input.len() as u16, input.as_bytes().to_vec())
+    }
+}
+
 impl Utf8 {
     pub fn new(tag: Tags, cursor: &mut Cursor<&[u8]>) -> Utf8 {
         let length = cursor.read_u16::<BE>().unwrap();
@@ -439,7 +445,6 @@ pub struct MethodHandle(
      *   value denotes the kind of this method handle, which characterizes its bytecode
      *   behavior (§5.4.3.5).
      */
-    // TODO: CHECK THIS
     u8,
     /**
      * **reference_index**\
@@ -476,7 +481,6 @@ pub struct MethodHandle(
      *   If the value is 8 (REF_newInvokeSpecial), the name of the method represented
      *   by a CONSTANT_Methodref_info structure must be <init>.
      */
-    // TODO: CHECK THIS
     u16,
 );
 

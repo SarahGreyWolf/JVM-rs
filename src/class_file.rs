@@ -3,13 +3,13 @@ use std::io::{Cursor, Seek};
 use std::str::from_utf8;
 use std::{error::Error, io::Read};
 
-use crate::{attributes, access_flags};
+use crate::access_flags::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use crate::constants::{self, Tags};
-use crate::access_flags::{ClassAccessFlags, MethodAccessFlags, FieldAccessFlags};
 use crate::errors::{
     class_format_check::{FormatCause, FormatError},
     class_loading::{LoadingCause, LoadingError},
 };
+use crate::{access_flags, attributes};
 
 /// [The Constant Pool](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2201%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C256%2Cnull%5D)
 #[derive(Clone, Debug)]
@@ -31,7 +31,7 @@ pub enum ConstantPool {
     InvokeDynamic(constants::InvokeDynamic),
     Module(constants::Module),
     Package(constants::Package),
-    Unknown
+    Unknown,
 }
 
 /// [Attributes](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A1244%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
@@ -67,7 +67,7 @@ pub enum AttributeInfo {
     NestMembers(attributes::NestMembers),
     Record(attributes::Record),
     PermittedSubclasses(attributes::PermittedSubclasses),
-    Unknown
+    Unknown,
 }
 
 /// [Fields](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A721%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
@@ -150,7 +150,10 @@ impl MethodInfo {
         println!("MethodInfo {{");
         println!("\tFlags: {:?}", self.access_flags);
         println!("\tName: {:?}", constant_pool[self.name_index as usize]);
-        println!("\tDescriptor: {:?}", constant_pool[self.descriptor_index as usize]);
+        println!(
+            "\tDescriptor: {:?}",
+            constant_pool[self.descriptor_index as usize]
+        );
         println!("\tAttribute Count: {:?}", self.attributes_count);
         println!("\tAttributes: {:#?}", self.attributes);
         println!("}}");
@@ -216,7 +219,7 @@ pub struct ClassFile {
      *  class defined by this class file. Neither the direct superclass nor any of its\
      *  superclasses may have the ACC_FINAL flag set in the access_flags item of its\
      *  ClassFile structure.
-     * 
+     *
      *  If the value of the super_class item is zero, then this class file must represent\
      *  the class Object, the only class or interface without a direct superclass.\
      *  For an interface, the value of the super_class item must always be a valid\
@@ -234,7 +237,7 @@ pub struct ClassFile {
      * **interfaces**\
      *  Each value in the interfaces array must be a valid index into\
      *  the constant_pool table. The constant_pool entry at each value\
-     *  of interfaces[i], where 0 ≤ i < interfaces_count, must be a\
+     *  of interfaces\[i\], where 0 ≤ i < interfaces_count, must be a\
      *  CONSTANT_Class_info structure representing an interface that is a direct\
      *  superinterface of this class or interface type, in the left-to-right order given in\
      *  the source for the type.
@@ -270,7 +273,7 @@ pub struct ClassFile {
      *  ACC_NATIVE and ACC_ABSTRACT flags are set in the access_flags item of a
      *  method_info structure, the Java Virtual Machine instructions implementing
      *  the method are also supplied.
-     * 
+     *
      *  The method_info structures represent all methods declared by this class
      *  or interface type, including instance methods, class methods, instance
      *  initialization methods (§2.9.1), and any class or interface initialization method
@@ -328,13 +331,17 @@ impl ClassFile {
             constants::read_constant_pool(&mut pool, &mut cursor)?;
             pool
         };
-        println!("Constant Pool: Size {}\n{:#?}", constant_pool.len(), constant_pool);
+        println!(
+            "Constant Pool: Size {}\n{:#?}",
+            constant_pool.len(),
+            constant_pool
+        );
         let access_flags = ClassAccessFlags::from_u16(cursor.read_u16::<BE>()?);
         println!("Class Access Flags: {:?}", access_flags);
         let this_class = cursor.read_u16::<BE>()?;
         println!("This Class Index: {this_class}");
         let super_class = cursor.read_u16::<BE>()?;
-        println!("Super Class Index: {this_class}");
+        println!("Super Class Index: {super_class}");
         let interfaces_count = cursor.read_u16::<BE>()?;
         let interfaces = {
             let mut interfaces: Vec<u16> = Vec::with_capacity(interfaces_count as usize);
@@ -353,7 +360,8 @@ impl ClassFile {
                     cursor.read_u16::<BE>()?,
                     cursor.read_u16::<BE>()?,
                     cursor.read_u16::<BE>()?,
-                    &mut cursor, &constant_pool
+                    &mut cursor,
+                    &constant_pool,
                 )?);
             }
             fields
