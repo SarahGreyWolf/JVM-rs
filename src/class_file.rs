@@ -4,7 +4,7 @@ use std::str::from_utf8;
 use std::{error::Error, io::Read};
 
 use crate::access_flags::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
-use crate::constants::{self, Tags};
+use crate::constants::{self, Tags, Utf8};
 use crate::errors::{
     class_format_check::{FormatCause, FormatError},
     class_loading::{LoadingCause, LoadingError},
@@ -67,17 +67,17 @@ pub enum AttributeInfo {
     NestMembers(attributes::NestMembers),
     Record(attributes::Record),
     PermittedSubclasses(attributes::PermittedSubclasses),
-    Unknown,
+    Unknown(String),
 }
 
 /// [Fields](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A721%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 #[derive(Clone, Debug)]
-struct FieldInfo {
-    access_flags: Vec<FieldAccessFlags>,
-    name_index: u16,
-    descriptor_index: u16,
-    attributes_count: u16,
-    attributes: Vec<AttributeInfo>,
+pub struct FieldInfo {
+    pub(crate) access_flags: Vec<FieldAccessFlags>,
+    pub(crate) name_index: u16,
+    pub(crate) descriptor_index: u16,
+    pub(crate) attributes_count: u16,
+    pub(crate) attributes: Vec<AttributeInfo>,
 }
 
 impl Default for FieldInfo {
@@ -93,28 +93,51 @@ impl Default for FieldInfo {
 }
 
 impl FieldInfo {
-    pub fn new(flags: u16, name_index: u16, descriptor_index: u16, attributes_count: u16, cursor: &mut Cursor<&[u8]>, constant_pool: &Vec<ConstantPool>)
-        -> Result<FieldInfo, Box<dyn Error>> {
+    pub fn new(
+        flags: u16,
+        name_index: u16,
+        descriptor_index: u16,
+        attributes_count: u16,
+        cursor: &mut Cursor<&[u8]>,
+        constant_pool: &Vec<ConstantPool>,
+    ) -> Result<FieldInfo, Box<dyn Error>> {
         let mut attributes = Vec::with_capacity(attributes_count as usize);
-        read_attributes(constant_pool, &mut attributes, cursor)?;
+        attributes::read_attributes(constant_pool, &mut attributes, cursor, None)?;
         Ok(FieldInfo {
             access_flags: FieldAccessFlags::from_u16(flags),
             name_index,
             descriptor_index,
             attributes_count,
-            attributes
+            attributes,
         })
+    }
+
+    pub fn get_type(&self, constant_pool: &[ConstantPool]) -> String {
+        let mut descriptor = if let ConstantPool::Utf8(desc) = constant_pool[self.descriptor_index as usize].clone() {
+            desc.get_string()
+        } else {
+            unreachable!("Could not get descriptor for method at index {}", self.descriptor_index);
+        };
+        if descriptor == "V" {
+            descriptor = "void".into()
+        }
+        if descriptor == "I" {
+            descriptor = "int".into()
+        }
+        descriptor = descriptor.trim_matches(';').to_string();
+        descriptor = descriptor.trim_matches('L').to_string();
+        descriptor
     }
 }
 
 /// [Methods](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A777%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C282%2Cnull%5D)
 #[derive(Clone, Debug)]
-struct MethodInfo {
-    access_flags: Vec<MethodAccessFlags>,
-    name_index: u16,
-    descriptor_index: u16,
-    attributes_count: u16,
-    attributes: Vec<AttributeInfo>,
+pub struct MethodInfo {
+    pub(crate) access_flags: Vec<MethodAccessFlags>,
+    pub(crate) name_index: u16,
+    pub(crate) descriptor_index: u16,
+    pub(crate) attributes_count: u16,
+    pub(crate) attributes: Vec<AttributeInfo>,
 }
 
 impl Default for MethodInfo {
@@ -130,23 +153,30 @@ impl Default for MethodInfo {
 }
 
 impl MethodInfo {
-    pub fn new(flags: u16, name_index: u16, descriptor_index: u16, attributes_count: u16, cursor: &mut Cursor<&[u8]>, constant_pool: &Vec<ConstantPool>)
-        -> Result<MethodInfo, Box<dyn Error>> {
+    pub fn new(
+        flags: u16,
+        name_index: u16,
+        descriptor_index: u16,
+        attributes_count: u16,
+        cursor: &mut Cursor<&[u8]>,
+        constant_pool: &[ConstantPool],
+        major_version: Option<u16>
+    ) -> Result<MethodInfo, Box<dyn Error>> {
         // if let ConstantPool::Utf8(n) = &constant_pool[name_index as usize-1] {
         //     println!("Name: {}", n.get_string());
         // }
         let mut attributes = Vec::with_capacity(attributes_count as usize);
-        read_attributes(constant_pool, &mut attributes, cursor)?;
+        attributes::read_attributes(constant_pool, &mut attributes, cursor, major_version)?;
         Ok(MethodInfo {
             access_flags: MethodAccessFlags::from_u16(flags),
             name_index,
             descriptor_index,
             attributes_count,
-            attributes
+            attributes,
         })
     }
 
-    pub fn print(self, constant_pool: &Vec<ConstantPool>) {
+    pub fn print(self, constant_pool: &[ConstantPool]) {
         println!("MethodInfo {{");
         println!("\tFlags: {:?}", self.access_flags);
         println!("\tName: {:?}", constant_pool[self.name_index as usize]);
@@ -158,6 +188,66 @@ impl MethodInfo {
         println!("\tAttributes: {:#?}", self.attributes);
         println!("}}");
     }
+
+    pub fn get_params(&self, constant_pool: &[ConstantPool]) -> Vec<String> {
+        let descriptor = if let ConstantPool::Utf8(desc) = constant_pool[self.descriptor_index as usize].clone() {
+            desc.get_string()
+        } else {
+            unreachable!("Could not get descriptor for method at index {}", self.descriptor_index);
+        };
+        let mut params = descriptor.split(')');
+        let mut params = params.next().expect("No parameters could be found").to_string();
+        params.remove(0);
+        let params: Vec<String> = params.split(";").map(|param|{
+            if param == "I" {
+                "int".into()
+            } else {
+                param.to_string()
+            }
+        }).collect();
+        let mut new_params = vec![];
+        for i in 0..params.len() {
+            let mut split: Vec<String> = params[i].split('L').map(|dumb| dumb.to_string()).collect();
+            if split.len() > 1 {
+                new_params.append(&mut split);
+            } else {
+                new_params.push(params[i].to_string());
+            }
+        }
+        for index in 0..new_params.len() - 1 {
+            if new_params[index] == "[" {
+                new_params.remove(index);
+            }
+            let mut param = new_params[index].trim_matches(|c|{
+                c == ')' || c == ']' || c == ';' || c == 'L'
+            });
+            param = param.trim_start_matches('L');
+            if param == "I" {
+                new_params[index] = "int".into();
+            }
+        }
+        new_params
+    }
+
+    pub fn get_return(&self, constant_pool: &[ConstantPool]) -> String {
+        let descriptor = if let ConstantPool::Utf8(desc) = constant_pool[self.descriptor_index as usize].clone() {
+            desc.get_string()
+        } else {
+            unreachable!("Could not get descriptor for method at index {}", self.descriptor_index);
+        };
+        let mut return_type = descriptor.split(')');
+        return_type.next().expect(&format!("No return type exists for {:?}", constant_pool[self.name_index as usize]));
+        let mut _type = return_type.next().expect(&format!("No return type exists for {:?}", constant_pool[self.name_index as usize])).to_string();
+        if _type == "V" {
+            _type = "void".into()
+        }
+        if _type == "I" {
+            _type = "int".into()
+        }
+        _type = _type.trim_matches(';').to_string();
+        _type = _type.trim_matches('L').to_string();
+        _type
+    }
 }
 
 #[derive(Clone)]
@@ -167,7 +257,7 @@ pub struct ClassFile {
      *  The magic item supplies the magic number identifying the class file format;\
      *  it has the value 0xCAFEBABE.
      */
-    magic: u32,
+    pub magic: u32,
     /**
      * **minor_version and major_version**\
      *  The values of the minor_version and major_version items are the minor\
@@ -176,8 +266,8 @@ pub struct ClassFile {
      *  has major version number M and minor version number m, we denote the version\
      *  of its class file format as M.m.
      */
-    minor_version: u16,
-    major_version: u16,
+    pub minor_version: u16,
+    pub major_version: u16,
     /**
      * **constant_pool_count**\
      *  The value of the constant_pool_count item is equal to the number of entries\
@@ -185,7 +275,7 @@ pub struct ClassFile {
      *  valid if it is greater than zero and less than constant_pool_count, with the\
      *  exception for constants of type long and double noted in §4.4.5.
      */
-    constant_pool_count: u16,
+    pub constant_pool_count: u16,
     /**
      * **constant_pool**\
      *  The constant_pool is a table of structures (§4.4) representing various string\
@@ -194,14 +284,14 @@ pub struct ClassFile {
      *  each constant_pool table entry is indicated by its first "tag" byte.\
      *  The constant_pool table is indexed from 1 to constant_pool_count - 1.
      */
-    constant_pool: Vec<ConstantPool>,
+    pub constant_pool: Vec<ConstantPool>,
     /**
      * **access_flags**\
      *  The value of the access_flags item is a mask of flags used to denote access\
      *  permissions to and properties of this class or interface. The interpretation of\
      *  each flag, when set, is specified in Table 4.1-B.
      */
-    access_flags: Vec<ClassAccessFlags>,
+    pub access_flags: Vec<ClassAccessFlags>,
     /**
      * **this_class**\
      *  The value of the this_class item must be a valid index into the\
@@ -209,7 +299,7 @@ pub struct ClassFile {
      *  CONSTANT_Class_info structure (§4.4.1) representing the class or interface\
      *  defined by this class file.
      */
-    this_class: u16,
+    pub this_class: u16,
     /**
      * **super_class**\
      *  For a class, the value of the super_class item either must be zero or\
@@ -226,13 +316,13 @@ pub struct ClassFile {
      *  index into the constant_pool table. The constant_pool entry at that index\
      *  must be a CONSTANT_Class_info structure representing the class Object.
      */
-    super_class: u16,
+    pub super_class: u16,
     /**
      * **interfaces_count**\
      *  The value of the interfaces_count item gives the number of direct\
      *  superinterfaces of this class or interface type.
      */
-    interfaces_count: u16,
+    pub interfaces_count: u16,
     /**
      * **interfaces**\
      *  Each value in the interfaces array must be a valid index into\
@@ -242,7 +332,7 @@ pub struct ClassFile {
      *  superinterface of this class or interface type, in the left-to-right order given in\
      *  the source for the type.
      */
-    interfaces: Vec<u16>,
+    pub interfaces: Vec<u16>,
     /**
      * **fields_count**\
      *  The value of the fields_count item gives the number of field_info\
@@ -250,7 +340,7 @@ pub struct ClassFile {
      *  both class variables and instance variables, declared by this class or interface\
      *  type.
      */
-    field_count: u16,
+    pub field_count: u16,
     /**
      * **fields**\
      *  Each value in the fields table must be a field_info structure (§4.5) giving\
@@ -259,13 +349,13 @@ pub struct ClassFile {
      *  not include items representing fields that are inherited from superclasses or\
      *  superinterfaces.
      */
-    fields: Vec<FieldInfo>,
+    pub fields: Vec<FieldInfo>,
     /**
      * **methods_count**\
      *  The value of the methods_count item gives the number of method_info
      *  structures in the methods table.
      */
-    methods_count: u16,
+    pub methods_count: u16,
     /**
      * **methods**\
      *  Each value in the methods table must be a method_info structure (§4.6) giving
@@ -280,13 +370,13 @@ pub struct ClassFile {
      *  (§2.9.2). The methods table does not include items representing methods that
      *  are inherited from superclasses or superinterfaces.
      */
-    methods: Vec<MethodInfo>,
+    pub methods: Vec<MethodInfo>,
     /**
      * **attributes_count**\
      *  The value of the attributes_count item gives the number of attributes in the
      *  attributes table of this class.
      */
-    attributes_count: u16,
+    pub attributes_count: u16,
     /**
      * **attributes**\
      *  Each value of the attributes table must be an attribute_info structure
@@ -298,7 +388,7 @@ pub struct ClassFile {
      *  The rules concerning non-predefined attributes in the attributes table of a
      *  ClassFile structure are given in §4.7.1.
      */
-    attributes: Vec<AttributeInfo>,
+    pub attributes: Vec<AttributeInfo>,
 }
 
 // FIXME: IMPORTANT RULES FOR MODULES
@@ -320,28 +410,19 @@ impl ClassFile {
     pub fn from_bytes(bytes: &[u8]) -> Result<ClassFile, Box<dyn Error>> {
         let mut cursor = Cursor::new(bytes);
         let magic = cursor.read_u32::<BE>()?;
-        println!("Magic: {:#04x}", magic);
         let minor_version = cursor.read_u16::<BE>()?;
         let major_version = cursor.read_u16::<BE>()?;
-        println!("Java Version: {}.{}", major_version, minor_version);
         let constant_pool_count = cursor.read_u16::<BE>()?;
         let constant_pool = {
             let mut pool = Vec::with_capacity((constant_pool_count - 1) as usize);
             pool.push(ConstantPool::Unknown);
             constants::read_constant_pool(&mut pool, &mut cursor)?;
+            pool.push(ConstantPool::Utf8(Utf8::from("StackMapTable")));
             pool
         };
-        println!(
-            "Constant Pool: Size {}\n{:#?}",
-            constant_pool.len(),
-            constant_pool
-        );
         let access_flags = ClassAccessFlags::from_u16(cursor.read_u16::<BE>()?);
-        println!("Class Access Flags: {:?}", access_flags);
         let this_class = cursor.read_u16::<BE>()?;
-        println!("This Class Index: {this_class}");
         let super_class = cursor.read_u16::<BE>()?;
-        println!("Super Class Index: {super_class}");
         let interfaces_count = cursor.read_u16::<BE>()?;
         let interfaces = {
             let mut interfaces: Vec<u16> = Vec::with_capacity(interfaces_count as usize);
@@ -350,7 +431,6 @@ impl ClassFile {
             }
             interfaces
         };
-        println!("Interfaces: Size {}\n\t{:?}", interfaces.len(), interfaces);
         let field_count = cursor.read_u16::<BE>()?;
         let fields = {
             let mut fields = Vec::with_capacity(field_count as usize);
@@ -366,9 +446,7 @@ impl ClassFile {
             }
             fields
         };
-        println!("Fields: {:?}", fields);
         let methods_count = cursor.read_u16::<BE>()?;
-        println!("Method Count: {:#}", methods_count);
         let methods = {
             let mut methods = Vec::with_capacity(methods_count as usize);
             for _ in 0..methods.capacity() {
@@ -377,21 +455,19 @@ impl ClassFile {
                     cursor.read_u16::<BE>()?,
                     cursor.read_u16::<BE>()?,
                     cursor.read_u16::<BE>()?,
-                    &mut cursor, &constant_pool
+                    &mut cursor,
+                    &constant_pool,
+                    Some(major_version)
                 )?);
             }
             methods
         };
-        for m in methods.clone() {
-            m.print(&constant_pool);
-        }
         let attributes_count = cursor.read_u16::<BE>()?;
         let attributes = {
             let mut attribs = Vec::with_capacity(attributes_count as usize);
-            read_attributes(&constant_pool, &mut attribs, &mut cursor)?;
+            attributes::read_attributes(&constant_pool, &mut attribs, &mut cursor, Some(major_version))?;
             attribs
         };
-
         //FIXME: This isn't ideal, is_empty is nightly and requires a feature flag
         if !cursor.is_empty() {
             return Err(Box::new(FormatError::new(
@@ -423,6 +499,25 @@ impl ClassFile {
             Ok(class)
         }
     }
+    pub fn print(&self) {
+        println!("Magic: {:#04X}", self.magic);
+        println!("Java Version: {}.{}", self.major_version, self.minor_version);
+        println!(
+            "Constant Pool: Size {}\n{:#?}",
+            self.constant_pool.len(),
+            self.constant_pool
+        );
+        println!("Class Access Flags: {:?}", self.access_flags);
+        println!("This Class Index: {}", self.this_class);
+        println!("Super Class Index: {}", self.super_class);
+        println!("Interfaces: Size {}\n\t{:?}", self.interfaces.len(), self.interfaces);
+        println!("Fields:\n{:#?}", self.fields);
+        println!("Method Count: {:#}", self.methods_count);
+        for m in self.methods.clone() {
+            m.print(&self.constant_pool);
+        }
+        println!("Attributes: {:#}\n{:#?}", self.attributes_count, self.attributes);
+    }
 }
 
 /// [Format Checking](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2235%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C590%2Cnull%5D)
@@ -448,129 +543,6 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
 
     // • All field references and method references in the constant pool must have valid
     //      names, valid classes, and valid descriptors (§4.3).
-
-    Ok(())
-}
-
-pub(crate) fn read_attributes(
-    constant_pool: &Vec<ConstantPool>,
-    attributes: &mut Vec<AttributeInfo>,
-    cursor: &mut Cursor<&[u8]>
-) -> Result<(), Box<dyn Error>> {
-    let size = attributes.capacity();
-    for _ in 0..size {
-        let name_index = cursor.read_u16::<BE>()?;
-        let name = &constant_pool[name_index as usize];
-        let length = cursor.read_u32::<BE>()?;
-        println!("Attribute Name Index: {:#}, Attribute Size: {}", name_index, length);
-        if let ConstantPool::Utf8(n) = name {
-            println!("{}", n.get_string());
-            let attribute = match n.get_string().as_str() {
-                "ConstantValue" => AttributeInfo::ConstantValue(
-                    attributes::ConstantValue::new(name_index, length, cursor.read_u16::<BE>()?)
-                ),
-                "Code" => AttributeInfo::Code(
-                    attributes::Code::new(name_index, length, &constant_pool, cursor)?
-                ),
-                // "StackMapTable" => AttributeInfo::StackMapTable(
-                    
-                // ),
-                // "Exceptions" => AttributeInfo::Exceptions(
-
-                // ),
-                // "InnerClasses" => AttributeInfo::InnerClasses(
-
-                // ),
-                // "EnclosingMethod" => AttributeInfo::EnclosingMethod(
-
-                // ),
-                // "Synthetic" => AttributeInfo::Synthetic(
-
-                // ),
-                // "Signature" => AttributeInfo::Signature(
-
-                // ),
-                // "SourceFile" => AttributeInfo::SourceFile(
-
-                // ),
-                // "SourceDebugExtension" => AttributeInfo::SourceDebugExtension(
-
-                // ),
-                "LineNumberTable" => AttributeInfo::LineNumberTable(
-                    attributes::LineNumberTable::new(
-                        name_index,
-                        length,
-                        cursor.read_u16::<BE>()?,
-                        cursor
-                    )?
-                ),
-                // "LocalVariableTable" => AttributeInfo::LocalVariableTable(
-
-                // ),
-                // "LocalVariableTypeTable" => AttributeInfo::LocalVariableTypeTable(
-
-                // ),
-                // "Deprecated" => AttributeInfo::Deprecated(
-
-                // ),
-                // "RuntimeVisibleAnnotations" => AttributeInfo::RuntimeVisibleAnnotations(
-
-                // ),
-                // "RuntimeInvisibleAnnotations" => AttributeInfo::RuntimeInvisibleAnnotations(
-
-                // ),
-                // "RuntimeVisibleParameterAnnotations" => AttributeInfo::RuntimeVisibleParameterAnnotations(
-
-                // ),
-                // "RuntimeInvisibleParameterAnnotations" => AttributeInfo::RuntimeInvisibleParameterAnnotations(
-
-                // ),
-                // "RuntimeVisibleTypeAnnotations" => AttributeInfo::RuntimeVisibleTypeAnnotations(
-
-                // ),
-                // "RuntimeInvisibleTypeAnnotations" => AttributeInfo::RuntimeInvisibleTypeAnnotations(
-
-                // ),
-                // "AnnotationDefault" => AttributeInfo::AnnotationDefault(
-
-                // ),
-                // "BootstrapMethods" => AttributeInfo::BootstrapMethods(
-
-                // ),
-                // "MethodParameters" => AttributeInfo::MethodParameters(
-
-                // ),
-                // "Module" => AttributeInfo::Module(
-
-                // ),
-                // "ModulePackages" => AttributeInfo::ModulePackages(
-
-                // ),
-                // "ModuleMainClass" => AttributeInfo::ModuleMainClass(
-
-                // ),
-                // "NestHost" => AttributeInfo::NestHost(
-
-                // ),
-                // "NestMembers" => AttributeInfo::NestMembers(
-
-                // ),
-                // "Record" => AttributeInfo::Record(
-
-                // ),
-                // "PermittedSubclasses" => AttributeInfo::PermittedSubclasses(
-
-                // ),
-                _ => AttributeInfo::Unknown
-            };
-            attributes.push(attribute);
-        } else {
-            return Err(Box::new(LoadingError::new(
-                LoadingCause::InvalidAttributeNameIndex(name.clone()),
-                &format!("Cursor Position: {:#04x?}", cursor.position() - 1),
-            )))
-        }
-    }
 
     Ok(())
 }

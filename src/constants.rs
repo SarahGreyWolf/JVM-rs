@@ -278,7 +278,7 @@ pub struct String(
      *  CONSTANT_Utf8_info structure (§4.4.7) representing the sequence of Unicode
      *  code points to which the String object is to be initialized.
      */
-    u16,
+    pub(crate) u16,
 );
 
 impl String {
