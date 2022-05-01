@@ -686,7 +686,7 @@ pub fn read_constant_pool(
             _ => {
                 return Err(Box::new(LoadingError::new(
                     LoadingCause::InvalidConstantTag(tag),
-                    &format!("Cursor Position: {:#04x?}", cursor.position() - 1),
+                    &format!("Cursor Position: {:#04X?}", cursor.position() - 1),
                 )))
             }
         });

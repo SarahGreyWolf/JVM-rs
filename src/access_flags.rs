@@ -5,6 +5,15 @@ pub enum ClassAccessFlags {
     None = 0x0000,
     /// Declared public; may be accessed from outside its package.
     AccPublic = 0x0001,
+    /// Declared private; accessible only within the
+    /// defining class and other classes belonging to the same
+    /// nest (§5.4.4).
+    AccPrivate = 0x0002,
+    /// Declared protected; may be accessed within
+    /// subclasses.
+    AccProtected = 0x0004,
+    /// Declared static.
+    AccStatic = 0x0008,
     /// Declared final; no subclasses allowed.
     AccFinal = 0x0010,
     /// Treat superclass methods specially when invoked by\
@@ -29,6 +38,15 @@ impl ClassAccessFlags {
         let mut flags = vec![];
         if value & ClassAccessFlags::AccPublic as u16 == ClassAccessFlags::AccPublic as u16 {
             flags.push(ClassAccessFlags::AccPublic);
+        }
+        if value & ClassAccessFlags::AccPrivate as u16 == ClassAccessFlags::AccPrivate as u16 {
+            flags.push(ClassAccessFlags::AccPrivate);
+        }
+        if value & ClassAccessFlags::AccProtected as u16 == ClassAccessFlags::AccProtected as u16 {
+            flags.push(ClassAccessFlags::AccProtected);
+        }
+        if value & ClassAccessFlags::AccStatic as u16 == ClassAccessFlags::AccStatic as u16 {
+            flags.push(ClassAccessFlags::AccStatic);
         }
         if value & ClassAccessFlags::AccFinal as u16 == ClassAccessFlags::AccFinal as u16 {
             flags.push(ClassAccessFlags::AccFinal);

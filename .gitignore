@@ -1,4 +1,8 @@
 /target
+/.vs
+
 *.class
 *.java
 *.kt
+*.scala
+*.txt
