@@ -45,7 +45,8 @@ impl ClassAccessFlags {
         if value & ClassAccessFlags::AccSynthetic as u16 == ClassAccessFlags::AccSynthetic as u16 {
             flags.push(ClassAccessFlags::AccSynthetic);
         }
-        if value & ClassAccessFlags::AccAnnotation as u16 == ClassAccessFlags::AccAnnotation as u16 {
+        if value & ClassAccessFlags::AccAnnotation as u16 == ClassAccessFlags::AccAnnotation as u16
+        {
             flags.push(ClassAccessFlags::AccAnnotation);
         }
         if value & ClassAccessFlags::AccEnum as u16 == ClassAccessFlags::AccEnum as u16 {
@@ -113,7 +114,9 @@ impl MethodAccessFlags {
         if value & MethodAccessFlags::AccFinal as u16 == MethodAccessFlags::AccFinal as u16 {
             flags.push(MethodAccessFlags::AccFinal);
         }
-        if value & MethodAccessFlags::AccSynchronized as u16 == MethodAccessFlags::AccSynchronized as u16 {
+        if value & MethodAccessFlags::AccSynchronized as u16 ==
+            MethodAccessFlags::AccSynchronized as u16
+        {
             flags.push(MethodAccessFlags::AccSynchronized);
         }
         if value & MethodAccessFlags::AccBridge as u16 == MethodAccessFlags::AccBridge as u16 {

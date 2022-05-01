@@ -258,7 +258,7 @@ pub struct Class(
      *  CONSTANT_Utf8_info structure (§4.4.7) representing a valid binary class or
      *  interface name encoded in internal form (§4.2.1).
      */
-    u16,
+    pub(crate) u16,
 );
 
 impl Class {
