@@ -50,14 +50,16 @@ pub mod class_loading {
     #[derive(Debug)]
     pub enum LoadingCause {
         InvalidConstantTag(u8),
-        InvalidAttributeNameIndex(ConstantPool)
+        InvalidAttributeNameIndex(ConstantPool),
     }
 
     impl Display for LoadingCause {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
                 LoadingCause::InvalidConstantTag(t) => write!(f, "InvalidConstantTag: {t}"),
-                LoadingCause::InvalidAttributeNameIndex(t) => write!(f, "InvalidAttributeNameIndex: {:?}", t),
+                LoadingCause::InvalidAttributeNameIndex(t) => {
+                    write!(f, "InvalidAttributeNameIndex: {:?}", t)
+                }
             }
         }
     }

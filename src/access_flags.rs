@@ -1,5 +1,5 @@
 #[repr(u16)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// [Class Access Flags](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#page=85)
 pub enum ClassAccessFlags {
     None = 0x0000,
@@ -74,6 +74,24 @@ impl ClassAccessFlags {
             flags.push(ClassAccessFlags::AccModule);
         }
         flags
+    }
+
+    pub fn get_string(&self) -> String {
+        match self {
+            ClassAccessFlags::None => "None".into(),
+            ClassAccessFlags::AccPublic => "public".into(),
+            ClassAccessFlags::AccPrivate => "private".into(),
+            ClassAccessFlags::AccProtected => "protected".into(),
+            ClassAccessFlags::AccStatic => "static".into(),
+            ClassAccessFlags::AccFinal => "final".into(),
+            ClassAccessFlags::AccSuper => "super".into(),
+            ClassAccessFlags::AccInterface => "interface".into(),
+            ClassAccessFlags::AccAbstract => "abstract".into(),
+            ClassAccessFlags::AccSynthetic => "synthetic".into(),
+            ClassAccessFlags::AccAnnotation => "annotation".into(),
+            ClassAccessFlags::AccEnum => "enum".into(),
+            ClassAccessFlags::AccModule => "module".into()
+        }
     }
 }
 
@@ -156,6 +174,24 @@ impl MethodAccessFlags {
             flags.push(MethodAccessFlags::AccSynthetic);
         }
         flags
+    }
+
+    pub fn get_string(&self) -> String {
+        match self {
+            MethodAccessFlags::None => "none".into(),
+            MethodAccessFlags::AccPublic => "public".into(),
+            MethodAccessFlags::AccPrivate => "private".into(),
+            MethodAccessFlags::AccProtected => "protected".into(),
+            MethodAccessFlags::AccStatic => "static".into(),
+            MethodAccessFlags::AccFinal => "final".into(),
+            MethodAccessFlags::AccSynchronized => "synchronized".into(),
+            MethodAccessFlags::AccBridge => "bridge".into(),
+            MethodAccessFlags::AccVarArgs => "varargs".into(),
+            MethodAccessFlags::AccNative => "native".into(),
+            MethodAccessFlags::AccAbstract => "abstract".into(),
+            MethodAccessFlags::AccStrict => "strict".into(),
+            MethodAccessFlags::AccSynthetic => "synthetic".into()
+        }
     }
 }
 
