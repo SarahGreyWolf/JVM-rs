@@ -1,5 +1,5 @@
 #[repr(u16)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// [Class Access Flags](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#page=85)
 pub enum ClassAccessFlags {
     None = 0x0000,
@@ -90,13 +90,14 @@ impl ClassAccessFlags {
             ClassAccessFlags::AccSynthetic => "synthetic",
             ClassAccessFlags::AccAnnotation => "annotation",
             ClassAccessFlags::AccEnum => "enum",
-            ClassAccessFlags::AccModule => "module"
-        }.into()
+            ClassAccessFlags::AccModule => "module",
+        }
+        .into()
     }
 }
 
 #[repr(u16)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// [Method Access Flags](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#page=112)
 pub enum MethodAccessFlags {
     None = 0x0000,
@@ -141,7 +142,8 @@ impl MethodAccessFlags {
         if value & MethodAccessFlags::AccPrivate as u16 == MethodAccessFlags::AccPrivate as u16 {
             flags.push(MethodAccessFlags::AccPrivate);
         }
-        if value & MethodAccessFlags::AccProtected as u16 == MethodAccessFlags::AccProtected as u16 {
+        if value & MethodAccessFlags::AccProtected as u16 == MethodAccessFlags::AccProtected as u16
+        {
             flags.push(MethodAccessFlags::AccProtected);
         }
         if value & MethodAccessFlags::AccStatic as u16 == MethodAccessFlags::AccStatic as u16 {
@@ -150,8 +152,8 @@ impl MethodAccessFlags {
         if value & MethodAccessFlags::AccFinal as u16 == MethodAccessFlags::AccFinal as u16 {
             flags.push(MethodAccessFlags::AccFinal);
         }
-        if value & MethodAccessFlags::AccSynchronized as u16 ==
-            MethodAccessFlags::AccSynchronized as u16
+        if value & MethodAccessFlags::AccSynchronized as u16
+            == MethodAccessFlags::AccSynchronized as u16
         {
             flags.push(MethodAccessFlags::AccSynchronized);
         }
@@ -170,7 +172,8 @@ impl MethodAccessFlags {
         if value & MethodAccessFlags::AccStrict as u16 == MethodAccessFlags::AccStrict as u16 {
             flags.push(MethodAccessFlags::AccStrict);
         }
-        if value & MethodAccessFlags::AccSynthetic as u16 == MethodAccessFlags::AccSynthetic as u16 {
+        if value & MethodAccessFlags::AccSynthetic as u16 == MethodAccessFlags::AccSynthetic as u16
+        {
             flags.push(MethodAccessFlags::AccSynthetic);
         }
         flags
@@ -190,8 +193,9 @@ impl MethodAccessFlags {
             MethodAccessFlags::AccNative => "native",
             MethodAccessFlags::AccAbstract => "abstract",
             MethodAccessFlags::AccStrict => "strict",
-            MethodAccessFlags::AccSynthetic => "synthetic"
-        }.into()
+            MethodAccessFlags::AccSynthetic => "synthetic",
+        }
+        .into()
     }
 }
 
@@ -268,6 +272,7 @@ impl FieldAccessFlags {
             FieldAccessFlags::AccTransient => "transient",
             FieldAccessFlags::AccSynthetic => "synthetic",
             FieldAccessFlags::AccEnum => "enum",
-        }.into()
+        }
+        .into()
     }
 }

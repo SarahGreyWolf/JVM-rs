@@ -1,17 +1,17 @@
 pub mod class_format_check {
     use std::error::Error;
-    use std::fmt::{write, Display};
+    use std::fmt::Display;
 
     #[derive(Debug)]
     pub enum FormatCause {
-        MagicNotCorrect,
+        IncorrectMagic,
         ExtraBytes,
     }
 
     impl Display for FormatCause {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                FormatCause::MagicNotCorrect => write!(f, "MagicNotCorrect"),
+                FormatCause::IncorrectMagic => write!(f, "MagicIncorrect"),
                 FormatCause::ExtraBytes => write!(f, "ExtraBytes"),
             }
         }
@@ -43,7 +43,7 @@ pub mod class_format_check {
 
 pub mod class_loading {
     use std::error::Error;
-    use std::fmt::{write, Display};
+    use std::fmt::Display;
 
     use crate::class_file::ConstantPool;
 

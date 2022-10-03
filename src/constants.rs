@@ -69,9 +69,7 @@ pub struct Utf8(
 );
 
 impl From<&str> for Utf8 {
-    fn from(input: &str) -> Self {
-        Utf8(1, input.len() as u16, input.as_bytes().to_vec())
-    }
+    fn from(input: &str) -> Self { Utf8(1, input.len() as u16, input.as_bytes().to_vec()) }
 }
 
 impl Utf8 {
@@ -87,7 +85,9 @@ impl Utf8 {
     }
 
     pub fn get_string(&self) -> std::string::String {
-        std::string::String::from(from_utf8(&self.2).unwrap_or("Could not create from utf8"))
+        let output =
+            std::string::String::from(from_utf8(&self.2).unwrap_or("Could not create from utf8"));
+        output.replace('/', ".")
     }
 }
 
@@ -112,9 +112,7 @@ pub struct Integer(
 );
 
 impl Integer {
-    pub fn new(tag: Tags, bytes: u32) -> Integer {
-        Integer(tag as u8, bytes)
-    }
+    pub fn new(tag: Tags, bytes: u32) -> Integer { Integer(tag as u8, bytes) }
 }
 
 #[derive(Clone, Debug)]
@@ -146,9 +144,7 @@ pub struct Float(
 );
 
 impl Float {
-    pub fn new(tag: Tags, bytes: u32) -> Float {
-        Float(tag as u8, bytes)
-    }
+    pub fn new(tag: Tags, bytes: u32) -> Float { Float(tag as u8, bytes) }
 }
 
 #[derive(Clone, Debug)]
@@ -262,9 +258,7 @@ pub struct Class(
 );
 
 impl Class {
-    pub fn new(tag: Tags, index: u16) -> Class {
-        Class(tag as u8, index)
-    }
+    pub fn new(tag: Tags, index: u16) -> Class { Class(tag as u8, index) }
 }
 
 #[derive(Clone, Debug)]
@@ -282,9 +276,7 @@ pub struct String(
 );
 
 impl String {
-    pub fn new(tag: Tags, index: u16) -> String {
-        String(tag as u8, index)
-    }
+    pub fn new(tag: Tags, index: u16) -> String { String(tag as u8, index) }
 }
 
 #[derive(Clone, Debug)]
@@ -578,9 +570,7 @@ pub struct Module(
 );
 
 impl Module {
-    pub fn new(tag: Tags, name_index: u16) -> Module {
-        Module(tag as u8, name_index)
-    }
+    pub fn new(tag: Tags, name_index: u16) -> Module { Module(tag as u8, name_index) }
 }
 
 #[derive(Clone, Debug)]
@@ -603,9 +593,7 @@ pub struct Package(
 );
 
 impl Package {
-    pub fn new(tag: Tags, name_index: u16) -> Package {
-        Package(tag as u8, name_index)
-    }
+    pub fn new(tag: Tags, name_index: u16) -> Package { Package(tag as u8, name_index) }
 }
 
 pub fn read_constant_pool(
