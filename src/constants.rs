@@ -53,40 +53,51 @@ impl From<u8> for Tags {
 
 #[derive(Clone)]
 /// [Utf8 Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A636%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C438%2Cnull%5D)
-pub struct Utf8(
+pub struct Utf8 {
     // FIXME: Seems completely redundant to care about the tag here for us
     //        Definitely seems like something that would be mostly important for a union
-    u8,
+    tag: u8,
     /** The value of the length item gives the number of bytes in the bytes array (not
      *  the length of the resulting string).
      */
-    u16,
+    length: u16,
     /** The bytes array contains the bytes of the string.
      *  No byte may have the value (byte)0.
      *  No byte may lie in the range (byte)0xf0 to (byte)0xff.
      */
-    Vec<u8>,
-);
+    bytes: Vec<u8>,
+}
 
 impl From<&str> for Utf8 {
-    fn from(input: &str) -> Self { Utf8(1, input.len() as u16, input.as_bytes().to_vec()) }
+    fn from(input: &str) -> Self {
+        Utf8 {
+            tag: 1,
+            length: input.len() as u16,
+            bytes: input.as_bytes().to_vec(),
+        }
+    }
 }
 
 impl Utf8 {
     pub fn new(tag: Tags, cursor: &mut Cursor<&[u8]>) -> Utf8 {
         let length = cursor.read_u16::<BE>().unwrap();
-        Utf8(tag as u8, length, {
-            let mut bytes = Vec::with_capacity(length as usize);
-            for _ in 0..length {
-                bytes.push(cursor.read_u8().unwrap());
-            }
-            bytes
-        })
+        Utf8 {
+            tag: tag as u8,
+            length,
+            bytes: {
+                let mut bytes = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    bytes.push(cursor.read_u8().unwrap());
+                }
+                bytes
+            },
+        }
     }
 
     pub fn get_string(&self) -> std::string::String {
-        let output =
-            std::string::String::from(from_utf8(&self.2).unwrap_or("Could not create from utf8"));
+        let output = std::string::String::from(
+            from_utf8(&self.bytes).unwrap_or("Could not create from utf8"),
+        );
         output.replace('/', ".")
     }
 }
@@ -100,26 +111,31 @@ impl std::fmt::Debug for Utf8 {
 
 #[derive(Clone, Debug)]
 /// [Integer Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A653%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C136.8%2Cnull%5D)
-pub struct Integer(
-    u8,
+pub struct Integer {
+    pub tag: u8,
     /**
      * **bytes**\
      *  The bytes item of the CONSTANT_Integer_info structure represents the value
      *  of the int constant. The bytes of the value are stored in big-endian (high byte
      *  first) order.
      */
-    u32,
-);
+    pub bytes: u32,
+}
 
 impl Integer {
-    pub fn new(tag: Tags, bytes: u32) -> Integer { Integer(tag as u8, bytes) }
+    pub fn new(tag: Tags, bytes: u32) -> Integer {
+        Integer {
+            tag: tag as u8,
+            bytes,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 /// [Float Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A653%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C136.8%2Cnull%5D)
 // TODO: There is a LOT of stuff I need to consider for the actual VM, but not now
-pub struct Float(
-    u8,
+pub struct Float {
+    tag: u8,
     /**
      * **bytes**\
      *  The bytes item of the CONSTANT_Float_info structure represents the value of
@@ -140,18 +156,23 @@ pub struct Float(
      *  (bits & 0x7fffff) << 1 :\
      *  (bits & 0x7fffff) | 0x800000;
      */
-    u32,
-);
+    bytes: u32,
+}
 
 impl Float {
-    pub fn new(tag: Tags, bytes: u32) -> Float { Float(tag as u8, bytes) }
+    pub fn new(tag: Tags, bytes: u32) -> Float {
+        Float {
+            tag: tag as u8,
+            bytes,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 /// [Long Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A458%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 // TODO: There is a LOT of stuff I need to consider for the actual VM, but not now
-pub struct Long(
-    u8,
+pub struct Long {
+    tag: u8,
     /**
      * **high_bytes**\
      *  The unsigned high_bytes and low_bytes items of the CONSTANT_Long_info
@@ -184,22 +205,26 @@ pub struct Long(
      *  Then the floating-point value equals the double value of the mathematical
      *  expression s · m · 2e-1075.
      */
-    u32,
+    high_bytes: u32,
     /// **low_bytes**
-    u32,
-);
+    low_bytes: u32,
+}
 
 impl Long {
     pub fn new(tag: Tags, high_bytes: u32, low_bytes: u32) -> Long {
-        Long(tag as u8, high_bytes, low_bytes)
+        Long {
+            tag: tag as u8,
+            high_bytes,
+            low_bytes,
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 /// [Double Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A458%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 // TODO: There is a LOT of stuff I need to consider for the actual VM, but not now
-pub struct Double(
-    u8,
+pub struct Double {
+    tag: u8,
     /**
      * **high_bytes**\
      *  The unsigned high_bytes and low_bytes items of the CONSTANT_Long_info
@@ -232,21 +257,25 @@ pub struct Double(
      *  Then the floating-point value equals the double value of the mathematical
      *  expression s · m · 2e-1075.
      */
-    u32,
+    high_bytes: u32,
     /// **low_bytes**
-    u32,
-);
+    low_bytes: u32,
+}
 
 impl Double {
     pub fn new(tag: Tags, high_bytes: u32, low_bytes: u32) -> Double {
-        Double(tag as u8, high_bytes, low_bytes)
+        Double {
+            tag: tag as u8,
+            high_bytes,
+            low_bytes,
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 /// [Class Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A646%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C396%2Cnull%5D)
-pub struct Class(
-    u8,
+pub struct Class {
+    tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the
@@ -254,17 +283,22 @@ pub struct Class(
      *  CONSTANT_Utf8_info structure (§4.4.7) representing a valid binary class or
      *  interface name encoded in internal form (§4.2.1).
      */
-    pub(crate) u16,
-);
+    pub(crate) name_index: u16,
+}
 
 impl Class {
-    pub fn new(tag: Tags, index: u16) -> Class { Class(tag as u8, index) }
+    pub fn new(tag: Tags, index: u16) -> Class {
+        Class {
+            tag: tag as u8,
+            name_index: index,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 /// [String Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A653%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C388%2Cnull%5D)
-pub struct String(
-    u8,
+pub struct String {
+    pub(crate) tag: u8,
     /**
      * **string_index**\
      *  The value of the string_index item must be a valid index into the
@@ -272,17 +306,22 @@ pub struct String(
      *  CONSTANT_Utf8_info structure (§4.4.7) representing the sequence of Unicode
      *  code points to which the String object is to be initialized.
      */
-    pub(crate) u16,
-);
+    pub(crate) string_index: u16,
+}
 
 impl String {
-    pub fn new(tag: Tags, index: u16) -> String { String(tag as u8, index) }
+    pub fn new(tag: Tags, index: u16) -> String {
+        String {
+            tag: tag as u8,
+            string_index: index,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 /// [Fieldref Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A450%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C577%2Cnull%5D)
-pub struct Fieldref(
-    u8,
+pub struct Fieldref {
+    tag: u8,
     /**
      * **class_index**\
      *  The value of the class_index item must be a valid index into the
@@ -293,7 +332,7 @@ pub struct Fieldref(
      *  In a CONSTANT_Fieldref_info structure, the class_index item may be either
      *  a class type or an interface type.
      */
-    u16,
+    pub class_index: u16,
     /**
      * **name_and_type_index**\
      *  The value of the name_and_type_index item must be a valid index into
@@ -305,19 +344,23 @@ pub struct Fieldref(
      *  field descriptor (§4.3.2). Otherwise, the indicated descriptor must be a method
      *  descriptor (§4.3.3).
      */
-    u16,
-);
+    pub name_and_type_index: u16,
+}
 
 impl Fieldref {
     pub fn new(tag: Tags, class_index: u16, name_and_type_index: u16) -> Fieldref {
-        Fieldref(tag as u8, class_index, name_and_type_index)
+        Fieldref {
+            tag: tag as u8,
+            class_index,
+            name_and_type_index,
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 /// [Methodref Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A450%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C577%2Cnull%5D)
-pub struct Methodref(
-    u8,
+pub struct Methodref {
+    tag: u8,
     /**
      * **class_index**\
      *  The value of the class_index item must be a valid index into the
@@ -325,7 +368,7 @@ pub struct Methodref(
      *  CONSTANT_Class_info structure (§4.4.1) representing a class or interface type
      *  that has the field or method as a member.
      */
-    u16,
+    pub class_index: u16,
     /**
      * **name_and_type_index**\
      *   The value of the name_and_type_index item must be a valid index into
@@ -338,19 +381,23 @@ pub struct Methodref(
      *   representing an instance initialization method (§2.9.1). The return type of such
      *   a method must be void.
      */
-    u16,
-);
+    pub name_and_type_index: u16,
+}
 
 impl Methodref {
     pub fn new(tag: Tags, class_index: u16, name_and_type_index: u16) -> Methodref {
-        Methodref(tag as u8, class_index, name_and_type_index)
+        Methodref {
+            tag: tag as u8,
+            class_index,
+            name_and_type_index,
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 /// [Methodref Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A450%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C577%2Cnull%5D)
-pub struct InterfaceMethodref(
-    u8,
+pub struct InterfaceMethodref {
+    tag: u8,
     /**
      * **class_index**\
      *  The value of the class_index item must be a valid index into the
@@ -361,7 +408,7 @@ pub struct InterfaceMethodref(
      *  In a CONSTANT_InterfaceMethodref_info structure, the class_index item
      *  must be an interface type, not a class type.
      */
-    u16,
+    class_index: u16,
     /**
      * **name_and_type_index**\
      *  The value of the name_and_type_index item must be a valid index into
@@ -369,19 +416,23 @@ pub struct InterfaceMethodref(
      *  CONSTANT_NameAndType_info structure (§4.4.6). This constant_pool entry
      *  indicates the name and descriptor of the field or method.
      */
-    u16,
-);
+    name_and_type_index: u16,
+}
 
 impl InterfaceMethodref {
     pub fn new(tag: Tags, class_index: u16, name_and_type_index: u16) -> InterfaceMethodref {
-        InterfaceMethodref(tag as u8, class_index, name_and_type_index)
+        InterfaceMethodref {
+            tag: tag as u8,
+            class_index,
+            name_and_type_index,
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 /// [NameAndType Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A634%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C245%2Cnull%5D)
-pub struct NameAndType(
-    u8,
+pub struct NameAndType {
+    tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the
@@ -390,7 +441,7 @@ pub struct NameAndType(
      *  name denoting a field or method (§4.2.2), or the special method name <init>
      *  (§2.9.1).
      */
-    u16,
+    pub name_index: u16,
     /**
      * **descriptor_index**\
      *  The value of the descriptor_index item must be a valid index into the
@@ -398,19 +449,23 @@ pub struct NameAndType(
      *  CONSTANT_Utf8_info structure (§4.4.7) representing a valid field descriptor
      *  or method descriptor (§4.3.2, §4.3.3).
      */
-    u16,
-);
+    descriptor_index: u16,
+}
 
 impl NameAndType {
     pub fn new(tag: Tags, name_index: u16, descriptor_index: u16) -> NameAndType {
-        NameAndType(tag as u8, name_index, descriptor_index)
+        NameAndType {
+            tag: tag as u8,
+            name_index,
+            descriptor_index,
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 /// [MethodType Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A668%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C235.18%2Cnull%5D)
-pub struct MethodType(
-    u8,
+pub struct MethodType {
+    tag: u8,
     /**
      * **descriptor_index**\
      *  The value of the descriptor_index item must be a valid index into the
@@ -418,26 +473,29 @@ pub struct MethodType(
      *  CONSTANT_Utf8_info structure (§4.4.7) representing a method descriptor
      *  (§4.3.3).
      */
-    u16,
-);
+    descriptor_index: u16,
+}
 
 impl MethodType {
     pub fn new(tag: Tags, descriptor_index: u16) -> MethodType {
-        MethodType(tag as u8, descriptor_index)
+        MethodType {
+            tag: tag as u8,
+            descriptor_index,
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 /// [MethodHandle constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A668%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C235.18%2Cnull%5D)
-pub struct MethodHandle(
-    u8,
+pub struct MethodHandle {
+    tag: u8,
     /**
      * **reference_kind**\
      *   The value of the reference_kind item must be in the range 1 to 9. The
      *   value denotes the kind of this method handle, which characterizes its bytecode
      *   behavior (§5.4.3.5).
      */
-    u8,
+    reference_kind: u8,
     /**
      * **reference_index**\
      *   The value of the reference_index item must be a valid index into the
@@ -473,19 +531,23 @@ pub struct MethodHandle(
      *   If the value is 8 (REF_newInvokeSpecial), the name of the method represented
      *   by a CONSTANT_Methodref_info structure must be <init>.
      */
-    u16,
-);
+    reference_index: u16,
+}
 
 impl MethodHandle {
     pub fn new(tag: Tags, reference_kind: u8, reference_index: u16) -> MethodHandle {
-        MethodHandle(tag as u8, reference_kind, reference_index)
+        MethodHandle {
+            tag: tag as u8,
+            reference_kind,
+            reference_index,
+        }
     }
 }
 
 /// [Dynamic Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A3782%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C370.8%2Cnull%5D)
 #[derive(Clone, Debug)]
-pub struct Dynamic(
-    u8,
+pub struct Dynamic {
+    tag: u8,
     /**
      * **bootstrap_method_attr_index**\
      *  The value of the bootstrap_method_attr_index item must be a valid index
@@ -497,7 +559,7 @@ pub struct Dynamic(
      *  are detected when classes are loaded (a potentially expensive check), we permit cycles
      *  initially but mandate a failure at resolution (§5.4.3.6)
      */
-    u16,
+    bootstrap_method_attr_index: u16,
     /**
      * **name_and_type_index**\
      *  The value of the name_and_type_index item must be a valid index into
@@ -507,26 +569,30 @@ pub struct Dynamic(
      *  In a CONSTANT_Dynamic_info structure, the indicated descriptor must be a field
      *  descriptor (§4.3.2).
      */
-    u16,
-);
+    name_and_type_index: u16,
+}
 
 impl Dynamic {
     pub fn new(tag: Tags, bootstrap_method_attr_index: u16, name_and_type_index: u16) -> Dynamic {
-        Dynamic(tag as u8, bootstrap_method_attr_index, name_and_type_index)
+        Dynamic {
+            tag: tag as u8,
+            bootstrap_method_attr_index,
+            name_and_type_index,
+        }
     }
 }
 
 /// [InvokeDynamic Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A3782%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C370.8%2Cnull%5D)
 #[derive(Clone, Debug)]
-pub struct InvokeDynamic(
-    u8,
+pub struct InvokeDynamic {
+    tag: u8,
     /**
      * **bootstrap_method_attr_index**\
      *  The value of the bootstrap_method_attr_index item must be a valid index
      *  into the bootstrap_methods array of the bootstrap method table of this class
      *  file (§4.7.23).
      */
-    u16,
+    bootstrap_method_attr_index: u16,
     /**
      * **name_and_type_index**\
      *  The value of the name_and_type_index item must be a valid index into
@@ -537,8 +603,8 @@ pub struct InvokeDynamic(
      *  In a CONSTANT_InvokeDynamic_info structure, the indicated descriptor must
      *  be a method descriptor (§4.3.3).
      */
-    u16,
-);
+    name_and_type_index: u16,
+}
 
 impl InvokeDynamic {
     pub fn new(
@@ -546,14 +612,18 @@ impl InvokeDynamic {
         bootstrap_method_attr_index: u16,
         name_and_type_index: u16,
     ) -> InvokeDynamic {
-        InvokeDynamic(tag as u8, bootstrap_method_attr_index, name_and_type_index)
+        InvokeDynamic {
+            tag: tag as u8,
+            bootstrap_method_attr_index,
+            name_and_type_index,
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 /// [Module Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2423%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C117.8%2Cnull%5D)
-pub struct Module(
-    u8,
+pub struct Module {
+    tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the
@@ -566,17 +636,22 @@ pub struct Module(
      *  access_flags item has the ACC_MODULE flag set. In all other class files, a
      *  CONSTANT_Module_info structure is illegal.
      */
-    u16,
-);
+    name_index: u16,
+}
 
 impl Module {
-    pub fn new(tag: Tags, name_index: u16) -> Module { Module(tag as u8, name_index) }
+    pub fn new(tag: Tags, name_index: u16) -> Module {
+        Module {
+            tag: tag as u8,
+            name_index,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 /// [Package Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A676%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C348.6%2Cnull%5D)
-pub struct Package(
-    u8,
+pub struct Package {
+    tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the
@@ -589,11 +664,16 @@ pub struct Package(
      *  access_flags item has the ACC_MODULE flag set. In all other class files, a
      *  CONSTANT_Package_info structure is illegal.
      */
-    u16,
-);
+    name_index: u16,
+}
 
 impl Package {
-    pub fn new(tag: Tags, name_index: u16) -> Package { Package(tag as u8, name_index) }
+    pub fn new(tag: Tags, name_index: u16) -> Package {
+        Package {
+            tag: tag as u8,
+            name_index,
+        }
+    }
 }
 
 pub fn read_constant_pool(
