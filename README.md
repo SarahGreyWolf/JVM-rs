@@ -16,7 +16,7 @@ Currently Java 17
     - [ ] Verification
 
 # Support Development
-You can support the development at either of the following places:\
+You can support the development at either of the following places:
 
 ### Kofi
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/sarahgreywolf)

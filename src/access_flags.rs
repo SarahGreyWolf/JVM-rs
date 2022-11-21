@@ -276,3 +276,254 @@ impl FieldAccessFlags {
         .into()
     }
 }
+
+#[repr(u16)]
+#[derive(Debug, Clone)]
+pub enum ParameterAccessFlags {
+    /**
+     * *ACC_FINAL*\
+     *  Indicates that the formal parameter was declared final
+     */
+    AccFinal = 0x0010,
+    /**
+     * *ACC_SYNTHETIC*\
+     *  Indicates that the formal parameter was not explicitly or implicitly
+     *  declared in source code, according to the specification of the language
+     *  in which the source code was written (JLS §13.1). (The formal
+     *  parameter is an implementation artifact of the compiler which
+     *  produced this class file.)
+     */
+    AccSynthetic = 0x1000,
+    /**
+     * *ACC_Mandated*\
+     *  Indicates that the formal parameter was implicitly declared in source
+     *  code, according to the specification of the language in which the source
+     *  code was written (JLS §13.1). (The formal parameter is mandated by a
+     *  language specification, so all compilers for the language must emit it.)
+     */
+    AccMandated = 0x8000,
+}
+
+impl ParameterAccessFlags {
+    pub fn from_u16(value: u16) -> Vec<Self> {
+        let mut flags = vec![];
+        if value & ParameterAccessFlags::AccFinal as u16 == ParameterAccessFlags::AccFinal as u16 {
+            flags.push(ParameterAccessFlags::AccFinal);
+        }
+        if value & ParameterAccessFlags::AccSynthetic as u16
+            == ParameterAccessFlags::AccSynthetic as u16
+        {
+            flags.push(ParameterAccessFlags::AccSynthetic);
+        }
+        if value & ParameterAccessFlags::AccMandated as u16
+            == ParameterAccessFlags::AccMandated as u16
+        {
+            flags.push(ParameterAccessFlags::AccMandated);
+        }
+        flags
+    }
+    pub fn get_string(&self) -> String {
+        match self {
+            ParameterAccessFlags::AccFinal => "final",
+            ParameterAccessFlags::AccSynthetic => "synthetic",
+            ParameterAccessFlags::AccMandated => "mandated",
+        }
+        .into()
+    }
+}
+
+pub mod ModuleFlags {
+    #[repr(u16)]
+    #[derive(Debug, Clone)]
+    pub enum ModuleAccessFlags {
+        /**
+         * *ACC_OPEN*\
+         *  Indicates that this module is open.
+         */
+        AccOpen = 0x0020,
+        /**
+         * *ACC_SYNTHETIC*\
+         *  Indicates that this module was not explicitly or implicitly declared.
+         */
+        AccSynthetic = 0x1000,
+        /**
+         * *ACC_Mandated*\
+         *  Indicates that this module was implicitly declared.
+         */
+        AccMandated = 0x8000,
+    }
+
+    impl ModuleAccessFlags {
+        pub fn from_u16(value: u16) -> Vec<Self> {
+            let mut flags = vec![];
+            if value & ModuleAccessFlags::AccOpen as u16 == ModuleAccessFlags::AccOpen as u16 {
+                flags.push(ModuleAccessFlags::AccOpen);
+            }
+            if value & ModuleAccessFlags::AccSynthetic as u16
+                == ModuleAccessFlags::AccSynthetic as u16
+            {
+                flags.push(ModuleAccessFlags::AccSynthetic);
+            }
+            if value & ModuleAccessFlags::AccMandated as u16
+                == ModuleAccessFlags::AccMandated as u16
+            {
+                flags.push(ModuleAccessFlags::AccMandated);
+            }
+            flags
+        }
+        pub fn get_string(&self) -> String {
+            match self {
+                ModuleAccessFlags::AccOpen => "open",
+                ModuleAccessFlags::AccSynthetic => "synthetic",
+                ModuleAccessFlags::AccMandated => "mandated",
+            }
+            .into()
+        }
+    }
+
+    #[repr(u16)]
+    #[derive(Debug, Clone)]
+    pub enum RequiresAccessFlags {
+        /**
+         * *ACC_TRANSITIVE*\
+         *  Indicates that any module which depends on the current module,
+         *  implicitly declares a dependence on the module indicated by this entry.
+         */
+        AccTransistive = 0x0020,
+        /**
+         * *ACC_STATIC_PHASE*\
+         *  Indicates that this dependence is mandatory in the static phase, i.e., at
+         *  compile time, but is optional in the dynamic phase, i.e., at run time.
+         */
+        AccStaticPhase = 0x0040,
+        /**
+         * *ACC_SYNTHETIC*\
+         *  Indicates that this dependence was not explicitly or implicitly declared
+         *  in the source of the module declaration.
+         */
+        AccSynthetic = 0x1000,
+        /**
+         * *ACC_Mandated*\
+         *  Indicates that this dependence was implicitly declared in the source of
+         *  the module declaration.
+         */
+        AccMandated = 0x8000,
+    }
+
+    impl RequiresAccessFlags {
+        pub fn from_u16(value: u16) -> Vec<Self> {
+            let mut flags = vec![];
+            if value & RequiresAccessFlags::AccTransistive as u16
+                == RequiresAccessFlags::AccTransistive as u16
+            {
+                flags.push(RequiresAccessFlags::AccTransistive);
+            }
+            if value & RequiresAccessFlags::AccStaticPhase as u16
+                == RequiresAccessFlags::AccStaticPhase as u16
+            {
+                flags.push(RequiresAccessFlags::AccStaticPhase);
+            }
+            if value & RequiresAccessFlags::AccSynthetic as u16
+                == RequiresAccessFlags::AccSynthetic as u16
+            {
+                flags.push(RequiresAccessFlags::AccSynthetic);
+            }
+            if value & RequiresAccessFlags::AccMandated as u16
+                == RequiresAccessFlags::AccMandated as u16
+            {
+                flags.push(RequiresAccessFlags::AccMandated);
+            }
+            flags
+        }
+        pub fn get_string(&self) -> String {
+            match self {
+                RequiresAccessFlags::AccTransistive => "trasnsistive",
+                RequiresAccessFlags::AccStaticPhase => "static_phase",
+                RequiresAccessFlags::AccSynthetic => "synthetic",
+                RequiresAccessFlags::AccMandated => "mandated",
+            }
+            .into()
+        }
+    }
+
+    #[repr(u16)]
+    #[derive(Debug, Clone)]
+    pub enum ExportsAccessFlags {
+        /**
+         * *ACC_SYNTHETIC*\
+         *  Indicates that this export was not explicitly or implicitly declared in
+         *  the source of the module declaration.
+         */
+        AccSynthetic = 0x1000,
+        /**
+         * *ACC_Mandated*\
+         *  Indicates that this export was implicitly declared in the source of the
+         *  module declaration.
+         */
+        AccMandated = 0x8000,
+    }
+
+    impl ExportsAccessFlags {
+        pub fn from_u16(value: u16) -> Vec<Self> {
+            let mut flags = vec![];
+            if value & ExportsAccessFlags::AccSynthetic as u16
+                == ExportsAccessFlags::AccSynthetic as u16
+            {
+                flags.push(ExportsAccessFlags::AccSynthetic);
+            }
+            if value & ExportsAccessFlags::AccMandated as u16
+                == ExportsAccessFlags::AccMandated as u16
+            {
+                flags.push(ExportsAccessFlags::AccMandated);
+            }
+            flags
+        }
+        pub fn get_string(&self) -> String {
+            match self {
+                ExportsAccessFlags::AccSynthetic => "synthetic",
+                ExportsAccessFlags::AccMandated => "mandated",
+            }
+            .into()
+        }
+    }
+
+    #[repr(u16)]
+    #[derive(Debug, Clone)]
+    pub enum OpensAccessFlags {
+        /**
+         * *ACC_SYNTHETIC*\
+         *  Indicates that this opening was not explicitly or implicitly declared in
+         *  the source of the module declaration.
+         */
+        AccSynthetic = 0x1000,
+        /**
+         * *ACC_Mandated*\
+         *  Indicates that this opening was implicitly declared in the source of the
+         *  module declaration.
+         */
+        AccMandated = 0x8000,
+    }
+
+    impl OpensAccessFlags {
+        pub fn from_u16(value: u16) -> Vec<Self> {
+            let mut flags = vec![];
+            if value & OpensAccessFlags::AccSynthetic as u16
+                == OpensAccessFlags::AccSynthetic as u16
+            {
+                flags.push(OpensAccessFlags::AccSynthetic);
+            }
+            if value & OpensAccessFlags::AccMandated as u16 == OpensAccessFlags::AccMandated as u16
+            {
+                flags.push(OpensAccessFlags::AccMandated);
+            }
+            flags
+        }
+        pub fn get_string(&self) -> String {
+            match self {
+                OpensAccessFlags::AccSynthetic => "synthetic",
+                OpensAccessFlags::AccMandated => "mandated",
+            }
+            .into()
+        }
+    }
+}

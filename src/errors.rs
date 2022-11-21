@@ -4,14 +4,14 @@ pub mod class_format_check {
 
     #[derive(Debug)]
     pub enum FormatCause {
-        IncorrectMagic,
+        IncorrectMagic(u32),
         ExtraBytes,
     }
 
     impl Display for FormatCause {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                FormatCause::IncorrectMagic => write!(f, "MagicIncorrect"),
+                FormatCause::IncorrectMagic(t) => write!(f, "MagicIncorrect: {:02X?}", t),
                 FormatCause::ExtraBytes => write!(f, "ExtraBytes"),
             }
         }
@@ -51,6 +51,9 @@ pub mod class_loading {
     pub enum LoadingCause {
         InvalidConstantTag(u8),
         InvalidAttributeNameIndex(ConstantPool),
+        InvalidTargetInfoValue(u8),
+        InvalidTargetTypeValue(u8),
+        InvalidTypePathKind(u8),
     }
 
     impl Display for LoadingCause {
@@ -59,6 +62,15 @@ pub mod class_loading {
                 LoadingCause::InvalidConstantTag(t) => write!(f, "InvalidConstantTag: {t}"),
                 LoadingCause::InvalidAttributeNameIndex(t) => {
                     write!(f, "InvalidAttributeNameIndex: {:?}", t)
+                }
+                LoadingCause::InvalidTargetInfoValue(t) => {
+                    write!(f, "InvalidTargetInfoValue: {t}")
+                }
+                LoadingCause::InvalidTargetTypeValue(t) => {
+                    write!(f, "InvalidTargetTypeValue: {t}")
+                }
+                LoadingCause::InvalidTypePathKind(t) => {
+                    write!(f, "InvalidTypePathKind: {t}")
                 }
             }
         }

@@ -1,5 +1,6 @@
 /target
 /.vs
+/test_verified_output
 
 *.class
 *.java

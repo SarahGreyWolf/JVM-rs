@@ -275,7 +275,7 @@ impl Double {
 #[derive(Clone, Debug)]
 /// [Class Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A646%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C396%2Cnull%5D)
 pub struct Class {
-    tag: u8,
+    pub tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the

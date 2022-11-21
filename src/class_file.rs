@@ -1,15 +1,15 @@
 use byteorder::{ReadBytesExt, BE};
-use std::io::{Cursor, Seek};
-use std::str::from_utf8;
-use std::{error::Error, io::Read};
+use std::io::Cursor;
+
+use std::error::Error;
 
 use crate::access_flags::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
-use crate::constants::{self, Tags, Utf8};
+use crate::attributes;
+use crate::constants::{self, Utf8};
 use crate::errors::{
     class_format_check::{FormatCause, FormatError},
     class_loading::{LoadingCause, LoadingError},
 };
-use crate::{access_flags, attributes};
 
 /// [The Constant Pool](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2201%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C256%2Cnull%5D)
 #[derive(Clone, Debug)]
@@ -71,25 +71,13 @@ pub enum AttributeInfo {
 }
 
 /// [Fields](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A721%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct FieldInfo {
     pub(crate) access_flags: Vec<FieldAccessFlags>,
     pub(crate) name_index: u16,
     pub(crate) descriptor_index: u16,
     pub(crate) attributes_count: u16,
     pub(crate) attributes: Vec<AttributeInfo>,
-}
-
-impl Default for FieldInfo {
-    fn default() -> FieldInfo {
-        FieldInfo {
-            access_flags: vec![],
-            name_index: 0,
-            descriptor_index: 0,
-            attributes_count: 0,
-            attributes: vec![],
-        }
-    }
 }
 
 impl FieldInfo {
@@ -99,7 +87,7 @@ impl FieldInfo {
         descriptor_index: u16,
         attributes_count: u16,
         cursor: &mut Cursor<&[u8]>,
-        constant_pool: &Vec<ConstantPool>,
+        constant_pool: &[ConstantPool],
     ) -> Result<FieldInfo, Box<dyn Error>> {
         let mut attributes = Vec::with_capacity(attributes_count as usize);
         attributes::read_attributes(constant_pool, &mut attributes, cursor, None)?;
@@ -113,10 +101,15 @@ impl FieldInfo {
     }
 
     pub fn get_type(&self, constant_pool: &[ConstantPool]) -> String {
-        let mut descriptor = if let ConstantPool::Utf8(desc) = constant_pool[self.descriptor_index as usize].clone() {
+        let mut descriptor = if let ConstantPool::Utf8(desc) =
+            constant_pool[self.descriptor_index as usize].clone()
+        {
             desc.get_string()
         } else {
-            unreachable!("Could not get descriptor for method at index {}", self.descriptor_index);
+            unreachable!(
+                "Could not get descriptor for method at index {}",
+                self.descriptor_index
+            );
         };
         if descriptor == "V" {
             descriptor = "void".into()
@@ -131,25 +124,13 @@ impl FieldInfo {
 }
 
 /// [Methods](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A777%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C282%2Cnull%5D)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct MethodInfo {
     pub(crate) access_flags: Vec<MethodAccessFlags>,
     pub(crate) name_index: u16,
     pub(crate) descriptor_index: u16,
     pub(crate) attributes_count: u16,
     pub(crate) attributes: Vec<AttributeInfo>,
-}
-
-impl Default for MethodInfo {
-    fn default() -> MethodInfo {
-        MethodInfo {
-            access_flags: vec![],
-            name_index: 0,
-            descriptor_index: 0,
-            attributes_count: 0,
-            attributes: vec![],
-        }
-    }
 }
 
 impl MethodInfo {
@@ -160,7 +141,7 @@ impl MethodInfo {
         attributes_count: u16,
         cursor: &mut Cursor<&[u8]>,
         constant_pool: &[ConstantPool],
-        major_version: Option<u16>
+        major_version: Option<u16>,
     ) -> Result<MethodInfo, Box<dyn Error>> {
         // if let ConstantPool::Utf8(n) = &constant_pool[name_index as usize-1] {
         //     println!("Name: {}", n.get_string());
@@ -176,51 +157,67 @@ impl MethodInfo {
         })
     }
 
-    pub fn print(self, constant_pool: &[ConstantPool]) {
-        println!("MethodInfo {{");
-        println!("\tFlags: {:?}", self.access_flags);
-        println!("\tName: {:?}", constant_pool[self.name_index as usize]);
-        println!(
-            "\tDescriptor: {:?}",
+    pub fn to_pretty_fmt(self, constant_pool: &[ConstantPool]) -> String {
+        let mut output = String::new();
+        output.push_str(&format!("MethodInfo {{\n"));
+        output.push_str(&format!("\tFlags: {:?}\n", self.access_flags));
+        output.push_str(&format!(
+            "\tName: {:?}\n",
+            constant_pool[self.name_index as usize]
+        ));
+        output.push_str(&format!(
+            "\tDescriptor: {:?}\n",
             constant_pool[self.descriptor_index as usize]
-        );
-        println!("\tAttribute Count: {:?}", self.attributes_count);
-        println!("\tAttributes: {:#?}", self.attributes);
-        println!("}}");
+        ));
+        output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
+        output.push_str(&format!("\tAttributes: {:#?}\n", self.attributes));
+        output.push_str(&format!("}}\n"));
+
+        output
     }
 
     pub fn get_params(&self, constant_pool: &[ConstantPool]) -> Vec<String> {
-        let descriptor = if let ConstantPool::Utf8(desc) = constant_pool[self.descriptor_index as usize].clone() {
+        let descriptor = if let ConstantPool::Utf8(desc) =
+            constant_pool[self.descriptor_index as usize].clone()
+        {
             desc.get_string()
         } else {
-            unreachable!("Could not get descriptor for method at index {}", self.descriptor_index);
+            unreachable!(
+                "Could not get descriptor for method at index {}",
+                self.descriptor_index
+            );
         };
         let mut params = descriptor.split(')');
-        let mut params = params.next().expect("No parameters could be found").to_string();
+        let mut params = params
+            .next()
+            .expect("No parameters could be found")
+            .to_string();
         params.remove(0);
-        let params: Vec<String> = params.split(";").map(|param|{
-            if param == "I" {
-                "int".into()
-            } else {
-                param.to_string()
-            }
-        }).collect();
+        let params: Vec<String> = params
+            .split(';')
+            .map(|param| {
+                if param == "I" {
+                    "int".into()
+                } else {
+                    param.to_string()
+                }
+            })
+            .collect();
         let mut new_params = vec![];
-        for i in 0..params.len() {
-            let mut split: Vec<String> = params[i].split('L').map(|dumb| dumb.to_string()).collect();
+        for param in params {
+            let mut split: Vec<String> = param.split('L').map(|dumb| dumb.to_string()).collect();
             if split.len() > 1 {
                 new_params.append(&mut split);
             } else {
-                new_params.push(params[i].to_string());
+                new_params.push(param.to_string());
             }
         }
         for index in 0..new_params.len() - 1 {
             if new_params[index] == "[" {
                 new_params.remove(index);
             }
-            let mut param = new_params[index].trim_matches(|c|{
-                c == ')' || c == ']' || c == ';' || c == 'L'
-            });
+            let mut param =
+                new_params[index].trim_matches(|c| c == ')' || c == ']' || c == ';' || c == 'L');
             param = param.trim_start_matches('L');
             if param == "I" {
                 new_params[index] = "int".into();
@@ -230,23 +227,41 @@ impl MethodInfo {
     }
 
     pub fn get_return(&self, constant_pool: &[ConstantPool]) -> String {
-        let descriptor = if let ConstantPool::Utf8(desc) = constant_pool[self.descriptor_index as usize].clone() {
+        let descriptor = if let ConstantPool::Utf8(desc) =
+            constant_pool[self.descriptor_index as usize].clone()
+        {
             desc.get_string()
         } else {
-            unreachable!("Could not get descriptor for method at index {}", self.descriptor_index);
+            unreachable!(
+                "Could not get descriptor for method at index {}",
+                self.descriptor_index
+            );
         };
         let mut return_type = descriptor.split(')');
-        return_type.next().expect(&format!("No return type exists for {:?}", constant_pool[self.name_index as usize]));
-        let mut _type = return_type.next().expect(&format!("No return type exists for {:?}", constant_pool[self.name_index as usize])).to_string();
-        if _type == "V" {
-            _type = "void".into()
+        return_type.next().unwrap_or_else(|| {
+            panic!(
+                "No return type exists for {:?}",
+                constant_pool[self.name_index as usize]
+            )
+        });
+        let mut r#type = return_type
+            .next()
+            .unwrap_or_else(|| {
+                panic!(
+                    "No return type exists for {:?}",
+                    constant_pool[self.name_index as usize]
+                )
+            })
+            .to_string();
+        if r#type == "V" {
+            r#type = "void".into()
         }
-        if _type == "I" {
-            _type = "int".into()
+        if r#type == "I" {
+            r#type = "int".into()
         }
-        _type = _type.trim_matches(';').to_string();
-        _type = _type.trim_matches('L').to_string();
-        _type
+        r#type = r#type.trim_matches(';').to_string();
+        r#type = r#type.trim_matches('L').to_string();
+        r#type
     }
 }
 
@@ -457,7 +472,7 @@ impl ClassFile {
                     cursor.read_u16::<BE>()?,
                     &mut cursor,
                     &constant_pool,
-                    Some(major_version)
+                    Some(major_version),
                 )?);
             }
             methods
@@ -465,7 +480,12 @@ impl ClassFile {
         let attributes_count = cursor.read_u16::<BE>()?;
         let attributes = {
             let mut attribs = Vec::with_capacity(attributes_count as usize);
-            attributes::read_attributes(&constant_pool, &mut attribs, &mut cursor, Some(major_version))?;
+            attributes::read_attributes(
+                &constant_pool,
+                &mut attribs,
+                &mut cursor,
+                Some(major_version),
+            )?;
             attribs
         };
         //FIXME: This isn't ideal, is_empty is nightly and requires a feature flag
@@ -499,24 +519,43 @@ impl ClassFile {
             Ok(class)
         }
     }
-    pub fn print(&self) {
-        println!("Magic: {:#04X}", self.magic);
-        println!("Java Version: {}.{}", self.major_version, self.minor_version);
-        println!(
-            "Constant Pool: Size {}\n{:#?}",
-            self.constant_pool.len(),
-            self.constant_pool
-        );
-        println!("Class Access Flags: {:?}", self.access_flags);
-        println!("This Class Index: {}", self.this_class);
-        println!("Super Class Index: {}", self.super_class);
-        println!("Interfaces: Size {}\n\t{:?}", self.interfaces.len(), self.interfaces);
-        println!("Fields:\n{:#?}", self.fields);
-        println!("Method Count: {:#}", self.methods_count);
-        for m in self.methods.clone() {
-            m.print(&self.constant_pool);
+
+    // TODO: Improve to_pretty_fmt to provide the value from index into constant pool
+    pub fn to_pretty_fmt(&self) -> String {
+        let mut output = String::new();
+        output.push_str(&format!("Magic: {:#04X}\n", self.magic));
+        output.push_str(&format!(
+            "Java Version: {}.{}\n",
+            self.major_version, self.minor_version
+        ));
+        output.push_str(&format!(
+            "Constant Pool: Size {}\n[\n",
+            self.constant_pool_count
+        ));
+        for i in 0..self.constant_pool.len() {
+            if i != 0 {
+                output.push_str(&format!("{i}: {:#?}\n", self.constant_pool[i]));
+            }
         }
-        println!("Attributes: {:#}\n{:#?}", self.attributes_count, self.attributes);
+        output.push_str("]\n");
+        output.push_str(&format!("Class Access Flags: {:?}\n", self.access_flags));
+        output.push_str(&format!("This Class Index: {}\n", self.this_class));
+        output.push_str(&format!("Super Class Index: {}\n", self.super_class));
+        output.push_str(&format!(
+            "Interfaces: Size {}\n\t{:?}\n",
+            self.interfaces.len(),
+            self.interfaces
+        ));
+        output.push_str(&format!("Fields:\n{:#?}\n", self.fields));
+        output.push_str(&format!("Method Count: {:#}\n", self.methods_count));
+        for m in self.methods.clone() {
+            output.push_str(&m.to_pretty_fmt(&self.constant_pool));
+        }
+        output.push_str(&format!(
+            "Attributes: {:#}\n{:#?}",
+            self.attributes_count, self.attributes
+        ));
+        output
     }
 }
 
@@ -525,8 +564,11 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
     // • The first four bytes must contain the right magic number.
     if class.magic != 0xCAFEBABE {
         return Err(FormatError::new(
-            FormatCause::MagicNotCorrect,
-            "Magic value in class file was incorrect",
+            FormatCause::IncorrectMagic(0xCAFEBABE),
+            &format!(
+                "Magic value in class file was incorrect: {:#02X?}",
+                class.magic
+            ),
         ));
     }
     // • All predefined attributes (§4.7) must be of the proper
@@ -545,4 +587,130 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
     //      names, valid classes, and valid descriptors (§4.3).
 
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod tests {
+    use super::*;
+    use std::{
+        fs::{read_to_string, File},
+        io::Read,
+    };
+
+    const TEST_PATH: &str = "test_verified_output/";
+
+    fn load_class(path: &str) -> Result<ClassFile, Box<dyn Error>> {
+        let mut class_file: File = File::open(path).expect("Failed to open file");
+        let mut contents = vec![00; class_file.metadata().unwrap().len() as usize];
+        class_file
+            .read_exact(&mut contents)
+            .expect("Failed to read bytes");
+        ClassFile::from_bytes(&contents)
+    }
+
+    #[test]
+    fn test_aiq() -> Result<(), Box<dyn Error>> {
+        let output = read_to_string(TEST_PATH.to_string() + "aiq/aiq.class.txt")?;
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "aiq/aiq.class"))?.to_pretty_fmt(),
+            output
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_java_basic_main() -> Result<(), Box<dyn Error>> {
+        let output = read_to_string(TEST_PATH.to_string() + "basic_main_java_test/test.class.txt")?;
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "basic_main_java_test/test.class"))?
+                .to_pretty_fmt(),
+            output
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_kotlin_basic_main() -> Result<(), Box<dyn Error>> {
+        let output =
+            read_to_string(TEST_PATH.to_string() + "basic_main_kotlin_test/TestKt.class.txt")?;
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "basic_main_kotlin_test/TestKt.class"))?
+                .to_pretty_fmt(),
+            output
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_scala_basic_main() -> Result<(), Box<dyn Error>> {
+        let output =
+            read_to_string(TEST_PATH.to_string() + "basic_main_scala_test/test$.class.txt")?;
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "basic_main_scala_test/test$.class"))?
+                .to_pretty_fmt(),
+            output
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_java_annotations() -> Result<(), Box<dyn Error>> {
+        let test_class_output =
+            read_to_string(TEST_PATH.to_string() + "annotations_java_test/test.class.txt")?;
+        let atRuntime_class_output =
+            read_to_string(TEST_PATH.to_string() + "annotations_java_test/atRuntime.class.txt")?;
+        let atCompile_class_output =
+            read_to_string(TEST_PATH.to_string() + "annotations_java_test/atCompile.class.txt")?;
+        let atRuntimeType_class_output = read_to_string(
+            TEST_PATH.to_string() + "annotations_java_test/atRuntimeType.class.txt",
+        )?;
+        let atCompileType_class_output = read_to_string(
+            TEST_PATH.to_string() + "annotations_java_test/atCompileType.class.txt",
+        )?;
+        let invisibleAnnotation_class_output = read_to_string(
+            TEST_PATH.to_string() + "annotations_java_test/invisibleAnnotation.class.txt",
+        )?;
+        let visibleAnnotation_class_output = read_to_string(
+            TEST_PATH.to_string() + "annotations_java_test/visibleAnnotation.class.txt",
+        )?;
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "annotations_java_test/test.class"))?
+                .to_pretty_fmt(),
+            test_class_output
+        );
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "annotations_java_test/atRuntime.class"))?
+                .to_pretty_fmt(),
+            atRuntime_class_output
+        );
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "annotations_java_test/atCompile.class"))?
+                .to_pretty_fmt(),
+            atCompile_class_output
+        );
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "annotations_java_test/atRuntimeType.class"))?
+                .to_pretty_fmt(),
+            atRuntimeType_class_output
+        );
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "annotations_java_test/atCompileType.class"))?
+                .to_pretty_fmt(),
+            atCompileType_class_output
+        );
+        assert_eq!(
+            load_class(
+                &(TEST_PATH.to_string() + "annotations_java_test/invisibleAnnotation.class")
+            )?
+            .to_pretty_fmt(),
+            invisibleAnnotation_class_output
+        );
+        assert_eq!(
+            load_class(&(TEST_PATH.to_string() + "annotations_java_test/visibleAnnotation.class"))?
+                .to_pretty_fmt(),
+            visibleAnnotation_class_output
+        );
+        Ok(())
+    }
 }
