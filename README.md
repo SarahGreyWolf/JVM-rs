@@ -11,7 +11,7 @@ Currently Java 17
     - [ ] Descriptor Formatting
     - [x] Methods
     - [x] Fields
-    - [ ] Attributes
+    - [x] Attributes
     - [ ] Format Checking
     - [ ] Verification
 
