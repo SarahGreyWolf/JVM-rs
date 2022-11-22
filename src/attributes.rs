@@ -5,7 +5,7 @@ use std::{error::Error, io::Cursor};
 
 use byteorder::{ReadBytesExt, BE};
 
-use crate::access_flags::{ModuleFlags, ParameterAccessFlags};
+use crate::access_flags::{module_flags, ParameterAccessFlags};
 use crate::class_file::{AttributeInfo, ConstantPool};
 
 use crate::errors::class_loading::{LoadingCause, LoadingError};
@@ -2272,7 +2272,7 @@ impl AnnotationDefault {
 }
 
 #[derive(Clone, Debug)]
-struct Methods {
+pub struct Methods {
     /**
      * *bootstrap_method_ref*\
      *  The value of the bootstrap_method_ref item must be a valid index into
@@ -2284,20 +2284,20 @@ struct Methods {
      *  handle must be able to accept the array of arguments described in §5.4.3.6, or
      *  resolution will fail.
      */
-    bootstrap_method_ref: u16,
+    pub bootstrap_method_ref: u16,
     /**
      * *num_bootstrap_arguments*\
      *  The value of the num_bootstrap_arguments item gives the number of
      *  items in the bootstrap_arguments array.
      */
-    num_bootstrap_arguments: u16,
+    pub num_bootstrap_arguments: u16,
     /**
      * *bootstrap_arguments*\
      *  Each entry in the bootstrap_arguments array must be a valid index into
      *  the constant_pool table. The constant_pool entry at that index must be
      *  loadable (§4.4).
      */
-    bootstrap_arguments: Vec<u16>,
+    pub bootstrap_arguments: Vec<u16>,
 }
 
 impl Methods {
@@ -2328,7 +2328,7 @@ pub struct BootstrapMethods {
      *  The value of the num_bootstrap_methods item determines the number of
      *  bootstrap method specifiers in the bootstrap_methods array.
      */
-    num_bootstrap_methods: u16,
+    pub num_bootstrap_methods: u16,
     /**
      * *bootstrap_methods*\
      *  Each entry in the bootstrap_methods table contains an index to a
@@ -2336,7 +2336,7 @@ pub struct BootstrapMethods {
      *  and a sequence (perhaps empty) of indexes to static arguments for the bootstrap
      *  method.
      */
-    bootstrap_methods: Vec<Methods>,
+    pub bootstrap_methods: Vec<Methods>,
 }
 
 impl BootstrapMethods {
@@ -2463,7 +2463,7 @@ struct ModuleRequires {
      *  is 54.0 or above, then neither ACC_TRANSITIVE nor ACC_STATIC_PHASE
      *  may be set in requires_flags.
      */
-    requires_flags: Vec<ModuleFlags::RequiresAccessFlags>,
+    requires_flags: Vec<module_flags::RequiresAccessFlags>,
     /**
      * *requires_version_index*\
      *  The value of the requires_version_index item must be either zero or a
@@ -2480,7 +2480,7 @@ impl ModuleRequires {
     pub fn new(cursor: &mut Cursor<&[u8]>) -> Result<ModuleRequires, Box<dyn Error>> {
         Ok(ModuleRequires {
             requires_index: cursor.read_u16::<BE>()?,
-            requires_flags: ModuleFlags::RequiresAccessFlags::from_u16(cursor.read_u16::<BE>()?),
+            requires_flags: module_flags::RequiresAccessFlags::from_u16(cursor.read_u16::<BE>()?),
             requires_version_index: cursor.read_u16::<BE>()?,
         })
     }
@@ -2499,7 +2499,7 @@ struct ModuleExports {
      *  name with its exports_index item.
      */
     exports_index: u16,
-    exports_flags: Vec<ModuleFlags::ExportsAccessFlags>,
+    exports_flags: Vec<module_flags::ExportsAccessFlags>,
     /**
      * *exports_to_count*\
      *  The value of the exports_to_count indicates the number of entries in the
@@ -2531,7 +2531,7 @@ struct ModuleExports {
 impl ModuleExports {
     pub fn new(cursor: &mut Cursor<&[u8]>) -> Result<ModuleExports, Box<dyn Error>> {
         let exports_index = cursor.read_u16::<BE>()?;
-        let exports_flags = ModuleFlags::ExportsAccessFlags::from_u16(cursor.read_u16::<BE>()?);
+        let exports_flags = module_flags::ExportsAccessFlags::from_u16(cursor.read_u16::<BE>()?);
         let exports_to_count = cursor.read_u16::<BE>()?;
         let mut exports_to_index: Vec<u16> = Vec::with_capacity(exports_to_count as usize);
         for _ in 0..exports_to_count {
@@ -2563,7 +2563,7 @@ struct ModuleOpens {
     /**
      * *opens_flags*
      */
-    opens_flags: Vec<ModuleFlags::OpensAccessFlags>,
+    opens_flags: Vec<module_flags::OpensAccessFlags>,
     /**
      * *opens_to_count*\
      *  The value of the opens_to_count indicates the number of entries in the
@@ -2595,7 +2595,7 @@ struct ModuleOpens {
 impl ModuleOpens {
     pub fn new(cursor: &mut Cursor<&[u8]>) -> Result<ModuleOpens, Box<dyn Error>> {
         let opens_index = cursor.read_u16::<BE>()?;
-        let opens_flags = ModuleFlags::OpensAccessFlags::from_u16(cursor.read_u16::<BE>()?);
+        let opens_flags = module_flags::OpensAccessFlags::from_u16(cursor.read_u16::<BE>()?);
         let opens_to_count = cursor.read_u16::<BE>()?;
         let mut opens_to_index: Vec<u16> = Vec::with_capacity(opens_to_count as usize);
         for _ in 0..opens_to_count {
@@ -2675,7 +2675,7 @@ pub struct Module {
      *  CONSTANT_Module_info structure (§4.4.11) denoting the current module.
      */
     module_name_index: u16,
-    module_flags: Vec<ModuleFlags::ModuleAccessFlags>,
+    module_flags: Vec<module_flags::ModuleAccessFlags>,
     /**
      * *module_version_index*\
      *  The value of the module_version_index item must be either zero or a valid
@@ -2774,7 +2774,7 @@ impl Module {
         cursor: &mut Cursor<&[u8]>,
     ) -> Result<Module, Box<dyn Error>> {
         let module_name_index = cursor.read_u16::<BE>()?;
-        let module_flags = ModuleFlags::ModuleAccessFlags::from_u16(cursor.read_u16::<BE>()?);
+        let module_flags = module_flags::ModuleAccessFlags::from_u16(cursor.read_u16::<BE>()?);
         let module_version_index = cursor.read_u16::<BE>()?;
 
         let requires_count = cursor.read_u16::<BE>()?;

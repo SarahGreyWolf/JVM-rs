@@ -2,10 +2,17 @@ pub mod class_format_check {
     use std::error::Error;
     use std::fmt::Display;
 
+    use crate::class_file::ConstantPool;
+
     #[derive(Debug)]
     pub enum FormatCause {
         IncorrectMagic(u32),
         ExtraBytes,
+        InvalidIndex(u16),
+        InvalidReferenceKind(u8),
+        InvalidConstant(ConstantPool),
+        MissingAttribute,
+        TooManyFlags,
     }
 
     impl Display for FormatCause {
@@ -13,6 +20,15 @@ pub mod class_format_check {
             match self {
                 FormatCause::IncorrectMagic(t) => write!(f, "MagicIncorrect: {:02X?}", t),
                 FormatCause::ExtraBytes => write!(f, "ExtraBytes"),
+                FormatCause::InvalidIndex(index) => {
+                    write!(f, "InvalidIndex: {index}")
+                }
+                FormatCause::InvalidReferenceKind(kind) => {
+                    write!(f, "InvalidReferenceKind: {kind}")
+                }
+                FormatCause::MissingAttribute => write!(f, "MissingAttribute"),
+                FormatCause::InvalidConstant(c) => write!(f, "InvalidConstant: {:?}", c),
+                FormatCause::TooManyFlags => write!(f, "TooManyFlags"),
             }
         }
     }
@@ -36,7 +52,7 @@ pub mod class_format_check {
 
     impl Display for FormatError {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "VerificationError: {}, {}", self.cause, self.msg)
+            write!(f, "Format Error: {}, {}", self.cause, self.msg)
         }
     }
 }

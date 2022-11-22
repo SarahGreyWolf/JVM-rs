@@ -485,6 +485,39 @@ impl MethodType {
     }
 }
 
+#[repr(u8)]
+#[derive(Clone, Debug)]
+/// [MethodHandleKinds](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2552%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C278%2Cnull%5D)
+pub enum MethodHandleKinds {
+    GetField = 1,
+    GetStatic,
+    PutField,
+    PutStatic,
+    InvokeVirtual,
+    InvokeStatic,
+    InvokeSpecial,
+    NewInvokeSpecial,
+    InvokeInterface,
+    Unknown,
+}
+
+impl From<u8> for MethodHandleKinds {
+    fn from(value: u8) -> Self {
+        match value {
+            1 => MethodHandleKinds::GetField,
+            2 => MethodHandleKinds::GetStatic,
+            3 => MethodHandleKinds::PutField,
+            4 => MethodHandleKinds::PutStatic,
+            5 => MethodHandleKinds::InvokeVirtual,
+            6 => MethodHandleKinds::InvokeStatic,
+            7 => MethodHandleKinds::InvokeSpecial,
+            8 => MethodHandleKinds::NewInvokeSpecial,
+            9 => MethodHandleKinds::InvokeInterface,
+            _ => MethodHandleKinds::Unknown,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 /// [MethodHandle constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A668%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C235.18%2Cnull%5D)
 pub struct MethodHandle {
@@ -495,21 +528,24 @@ pub struct MethodHandle {
      *   value denotes the kind of this method handle, which characterizes its bytecode
      *   behavior (§5.4.3.5).
      */
-    pub reference_kind: u8,
+    pub reference_kind: MethodHandleKinds,
     /**
      * **reference_index**\
      *   The value of the reference_index item must be a valid index into the
      *   constant_pool table. The constant_pool entry at that index must be as
-     *   follows:\
+     *   follows:
+     *
      *   • If the value of the reference_kind item is 1 (REF_getField), 2
      *   (REF_getStatic), 3 (REF_putField), or 4 (REF_putStatic), then the
      *   constant_pool entry at that index must be a CONSTANT_Fieldref_info
      *   structure (§4.4.2) representing a field for which a method handle is to be
-     *   created.\
+     *   created.
+     *
      *   • If the value of the reference_kind item is 5 (REF_invokeVirtual) or 8
      *   (REF_newInvokeSpecial), then the constant_pool entry at that index must
      *   be a CONSTANT_Methodref_info structure (§4.4.2) representing a class's
-     *   method or constructor (§2.9.1) for which a method handle is to be created.\
+     *   method or constructor (§2.9.1) for which a method handle is to be created.
+     *
      *   • If the value of the reference_kind item is 6 (REF_invokeStatic)
      *   or 7 (REF_invokeSpecial), then if the class file version number
      *   is less than 52.0, the constant_pool entry at that index must be
@@ -518,16 +554,19 @@ pub struct MethodHandle {
      *   version number is 52.0 or above, the constant_pool entry at that
      *   index must be either a CONSTANT_Methodref_info structure or a
      *   CONSTANT_InterfaceMethodref_info structure (§4.4.2) representing a
-     *   class's or interface's method for which a method handle is to be created.\
+     *   class's or interface's method for which a method handle is to be created.
+     *
      *   • If the value of the reference_kind item is 9 (REF_invokeInterface),
      *   then the constant_pool entry at that index must be a
      *   CONSTANT_InterfaceMethodref_info structure representing an interface's
      *   method for which a method handle is to be created.
+     *
      *   If the value of the reference_kind item is 5 (REF_invokeVirtual), 6
      *   (REF_invokeStatic), 7 (REF_invokeSpecial), or 9 (REF_invokeInterface),
      *   the name of the method represented by a CONSTANT_Methodref_info structure
      *   or a CONSTANT_InterfaceMethodref_info structure must not be <init> or
-     *   <clinit>.\
+     *   <clinit>.
+     *
      *   If the value is 8 (REF_newInvokeSpecial), the name of the method represented
      *   by a CONSTANT_Methodref_info structure must be <init>.
      */
@@ -538,7 +577,7 @@ impl MethodHandle {
     pub fn new(tag: Tags, reference_kind: u8, reference_index: u16) -> MethodHandle {
         MethodHandle {
             tag: tag as u8,
-            reference_kind,
+            reference_kind: MethodHandleKinds::from(reference_kind),
             reference_index,
         }
     }

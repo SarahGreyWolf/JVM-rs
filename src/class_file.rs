@@ -73,11 +73,11 @@ pub enum AttributeInfo {
 /// [Fields](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A721%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 #[derive(Clone, Debug, Default)]
 pub struct FieldInfo {
-    pub(crate) access_flags: Vec<FieldAccessFlags>,
-    pub(crate) name_index: u16,
-    pub(crate) descriptor_index: u16,
-    pub(crate) attributes_count: u16,
-    pub(crate) attributes: Vec<AttributeInfo>,
+    pub access_flags: Vec<FieldAccessFlags>,
+    pub name_index: u16,
+    pub descriptor_index: u16,
+    pub attributes_count: u16,
+    pub attributes: Vec<AttributeInfo>,
 }
 
 impl FieldInfo {
@@ -126,11 +126,11 @@ impl FieldInfo {
 /// [Methods](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A777%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C282%2Cnull%5D)
 #[derive(Clone, Debug, Default)]
 pub struct MethodInfo {
-    pub(crate) access_flags: Vec<MethodAccessFlags>,
-    pub(crate) name_index: u16,
-    pub(crate) descriptor_index: u16,
-    pub(crate) attributes_count: u16,
-    pub(crate) attributes: Vec<AttributeInfo>,
+    pub access_flags: Vec<MethodAccessFlags>,
+    pub name_index: u16,
+    pub descriptor_index: u16,
+    pub attributes_count: u16,
+    pub attributes: Vec<AttributeInfo>,
 }
 
 impl MethodInfo {
@@ -489,6 +489,7 @@ impl ClassFile {
             attribs
         };
         //FIXME: This isn't ideal, is_empty is nightly and requires a feature flag
+        // • The class file must not be truncated or have extra bytes at the end.
         if !cursor.is_empty() {
             return Err(Box::new(FormatError::new(
                 FormatCause::ExtraBytes,
@@ -557,6 +558,13 @@ impl ClassFile {
         ));
         output
     }
+
+    pub fn get_from_constant_pool(&self, index: u16) -> Result<&ConstantPool, FormatError> {
+        if index > self.constant_pool_count {
+            return Err(FormatError::new(FormatCause::InvalidIndex(index), ""));
+        }
+        Ok(&self.constant_pool[index as usize])
+    }
 }
 
 /// [Format Checking](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2235%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C590%2Cnull%5D)
@@ -571,6 +579,14 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
             ),
         ));
     }
+    if class.access_flags.contains(&ClassAccessFlags::AccModule) {
+        if class.access_flags.len() > 1 {
+            return Err(FormatError::new(
+                FormatCause::TooManyFlags,
+                "Too many flags for a Module class",
+            ));
+        }
+    }
     // • All predefined attributes (§4.7) must be of the proper
     //      length, except for StackMapTable, RuntimeVisibleAnnotations,
     //      RuntimeInvisibleAnnotations, RuntimeVisibleParameterAnnotations,
@@ -578,10 +594,236 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
     //      RuntimeVisibleTypeAnnotations, RuntimeInvisibleTypeAnnotations, and
     //      AnnotationDefault.
 
-    // FIXME: Can't really check this in here
-    // • The class file must not be truncated or have extra bytes at the end.
-
     // • The constant pool must satisfy the constraints documented throughout §4.4
+    for constant in &class.constant_pool {
+        match constant {
+            ConstantPool::Class(c) => {
+                let ConstantPool::Utf8(_) = class.get_from_constant_pool(c.name_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(c.name_index),
+                        "Class name_index was not a Utf8 Constant"
+                    ));
+                };
+            }
+            ConstantPool::String(s) => {
+                let ConstantPool::Utf8(_) = class.get_from_constant_pool(s.string_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(s.string_index),
+                        "String string_index was not a Utf8 Constant"
+                    ));
+                };
+            }
+            ConstantPool::Fieldref(f) => {
+                let ConstantPool::Class(_) = class.get_from_constant_pool(f.class_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(f.class_index),
+                        "Fieldref class_index was not a Class Constant"
+                    ));
+                };
+                let ConstantPool::NameAndType(_) = class.get_from_constant_pool(f.name_and_type_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(f.name_and_type_index),
+                        "Fieldref name_and_type_index was not a NameAndType Constant"
+                    ));
+                };
+            }
+            ConstantPool::Methodref(m) => {
+                let ConstantPool::Class(_) = class.get_from_constant_pool(m.class_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(m.class_index),
+                        "MethodRef class_index was not a Class Constant"
+                    ));
+                };
+                let ConstantPool::NameAndType(_) = class.get_from_constant_pool(m.name_and_type_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(m.name_and_type_index),
+                        "MethodRef name_and_type_index was not a NameAndType Constant"
+                    ));
+                };
+            }
+            ConstantPool::InterfaceMethodRef(im) => {
+                let ConstantPool::Class(_) = class.get_from_constant_pool(im.class_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(im.class_index),
+                        "InterfaceMethodRef class_index was not a Class Constant"
+                    ));
+                };
+                let ConstantPool::NameAndType(_) = class.get_from_constant_pool(im.name_and_type_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(im.name_and_type_index),
+                        "InterfaceMethodRef name_and_type_index was not a NameAndType Constant"
+                    ));
+                };
+            }
+            ConstantPool::NameAndType(nt) => {
+                let ConstantPool::Utf8(_) = class.get_from_constant_pool(nt.name_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(nt.name_index),
+                        "NameAndType name_index was not a Utf8 Constant"
+                    ));
+                };
+                let ConstantPool::Utf8(_) = class.get_from_constant_pool(nt.descriptor_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(nt.descriptor_index),
+                        "NameAndType descriptor_index was not a Utf8 Constant"
+                    ));
+                };
+            }
+            ConstantPool::MethodHandle(mh) => {
+                let reference_kind_u8 = mh.reference_kind.clone() as u8;
+                match reference_kind_u8 {
+                    1..=4 => {
+                        let ConstantPool::Fieldref(_) = class.get_from_constant_pool(mh.reference_index)? else {
+                            return Err(FormatError::new(
+                                FormatCause::InvalidIndex(mh.reference_index),
+                                "MethodHandle reference_index was not a Fieldref Constant"
+                            ));
+                        };
+                    }
+                    5 | 8 => {
+                        let ConstantPool::Methodref(_) = class.get_from_constant_pool(mh.reference_index)? else {
+                            return Err(FormatError::new(
+                                FormatCause::InvalidIndex(mh.reference_index),
+                                "MethodHandle reference_index was not a Methodref Constant"
+                            ));
+                        };
+                    }
+                    6 | 7 => {
+                        if class.major_version < 52 {
+                            let ConstantPool::Methodref(_) = class.get_from_constant_pool(mh.reference_index)? else {
+                                return Err(FormatError::new(
+                                    FormatCause::InvalidIndex(mh.reference_index),
+                                    "MethodHandle reference_index was not a Methodref Constant"
+                                ));
+                            };
+                        } else {
+                            match class.get_from_constant_pool(mh.reference_index)? {
+                                ConstantPool::Methodref(_) => {}
+                                ConstantPool::InterfaceMethodRef(_) => {}
+                                _ => {
+                                    return Err(FormatError::new(
+                                        FormatCause::InvalidIndex(
+                                            mh.reference_index,
+                                        ),
+                                        "MethodHandle reference_index was neither a Methodref or InterfaceMethodRef Constant",
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                    9 => {
+                        let ConstantPool::InterfaceMethodRef(_) = class.get_from_constant_pool(mh.reference_index)? else {
+                            return Err(FormatError::new(
+                                FormatCause::InvalidIndex(mh.reference_index),
+                                "MethodHandle reference_index was not a InterfaceMethodRef Constant"
+                            ));
+                        };
+                    }
+                    _ => {
+                        return Err(FormatError::new(
+                            FormatCause::InvalidReferenceKind(reference_kind_u8),
+                            "MethodHandle reference kind was invalid",
+                        ));
+                    }
+                }
+            }
+            ConstantPool::MethodType(mt) => {
+                let ConstantPool::Utf8(_) = class.get_from_constant_pool(mt.descriptor_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(mt.descriptor_index),
+                        "MethodType name_index was not a Utf8 Constant"
+                    ));
+                };
+            }
+            ConstantPool::Dynamic(d) => {
+                let ConstantPool::NameAndType(_) = class.get_from_constant_pool(d.name_and_type_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(d.name_and_type_index),
+                        "Dynamic name_and_type_index was not a NameAndType Constant"
+                    ));
+                };
+                let Some(AttributeInfo::BootstrapMethods(bm)) =
+                    class.attributes.iter().find(|a| {
+                        if let AttributeInfo::BootstrapMethods(_) = a {
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                else {
+                    return Err(FormatError::new(
+                        FormatCause::MissingAttribute,
+                        "Missing BootstrapMethods attribute required by ConstantPool::Dynamic"
+                    ));
+                };
+                if bm.bootstrap_methods.len() < d.bootstrap_method_attr_index as usize {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(d.name_and_type_index),
+                        "Dynamic bootstrap_method_attr_index was not a valid index into BootstrapMethods attribute",
+                    ));
+                }
+            }
+            ConstantPool::InvokeDynamic(id) => {
+                let ConstantPool::NameAndType(_) = class.get_from_constant_pool(id.name_and_type_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(id.name_and_type_index),
+                        "Dynamic name_and_type_index was not a NameAndType Constant"
+                    ));
+                };
+                let Some(AttributeInfo::BootstrapMethods(bm)) =
+                    class.attributes.iter().find(|a| {
+                        if let AttributeInfo::BootstrapMethods(_) = a {
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                else {
+                    return Err(FormatError::new(
+                        FormatCause::MissingAttribute,
+                        "Missing BootstrapMethods attribute required by ConstantPool::Dynamic"
+                    ));
+                };
+                if bm.bootstrap_methods.len() < id.bootstrap_method_attr_index as usize {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(id.name_and_type_index),
+                        "Dynamic bootstrap_method_attr_index was not a valid index into BootstrapMethods attribute",
+                    ));
+                }
+            }
+            ConstantPool::Module(mo) => {
+                if class.access_flags.contains(&ClassAccessFlags::AccModule) {
+                    let ConstantPool::Utf8(_) = class.get_from_constant_pool(mo.name_index)? else {
+                        return Err(FormatError::new(
+                            FormatCause::InvalidIndex(mo.name_index),
+                            "Module name_index was not a Utf8 Constant"
+                        ));
+                    };
+                } else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidConstant(constant.clone()),
+                        "Constant is not permitted when class is not a Module",
+                    ));
+                }
+            }
+            ConstantPool::Package(p) => {
+                if class.access_flags.contains(&ClassAccessFlags::AccModule) {
+                    let ConstantPool::Utf8(_) = class.get_from_constant_pool(p.name_index)? else {
+                        return Err(FormatError::new(
+                            FormatCause::InvalidIndex(p.name_index),
+                            "Module name_index was not a Utf8 Constant"
+                        ));
+                    };
+                } else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidConstant(constant.clone()),
+                        "Constant is not permitted when class is not a Module",
+                    ));
+                }
+            }
+            _ => {}
+        }
+    }
 
     // • All field references and method references in the constant pool must have valid
     //      names, valid classes, and valid descriptors (§4.3).

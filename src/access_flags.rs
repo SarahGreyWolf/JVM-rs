@@ -332,7 +332,7 @@ impl ParameterAccessFlags {
     }
 }
 
-pub mod ModuleFlags {
+pub mod module_flags {
     #[repr(u16)]
     #[derive(Debug, Clone)]
     pub enum ModuleAccessFlags {
