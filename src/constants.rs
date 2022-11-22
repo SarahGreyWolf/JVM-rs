@@ -60,12 +60,12 @@ pub struct Utf8 {
     /** The value of the length item gives the number of bytes in the bytes array (not
      *  the length of the resulting string).
      */
-    length: u16,
+    pub length: u16,
     /** The bytes array contains the bytes of the string.
      *  No byte may have the value (byte)0.
      *  No byte may lie in the range (byte)0xf0 to (byte)0xff.
      */
-    bytes: Vec<u8>,
+    pub bytes: Vec<u8>,
 }
 
 impl From<&str> for Utf8 {
@@ -112,7 +112,7 @@ impl std::fmt::Debug for Utf8 {
 #[derive(Clone, Debug)]
 /// [Integer Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A653%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C136.8%2Cnull%5D)
 pub struct Integer {
-    pub tag: u8,
+    tag: u8,
     /**
      * **bytes**\
      *  The bytes item of the CONSTANT_Integer_info structure represents the value
@@ -156,7 +156,7 @@ pub struct Float {
      *  (bits & 0x7fffff) << 1 :\
      *  (bits & 0x7fffff) | 0x800000;
      */
-    bytes: u32,
+    pub bytes: u32,
 }
 
 impl Float {
@@ -205,9 +205,9 @@ pub struct Long {
      *  Then the floating-point value equals the double value of the mathematical
      *  expression s · m · 2e-1075.
      */
-    high_bytes: u32,
+    pub high_bytes: u32,
     /// **low_bytes**
-    low_bytes: u32,
+    pub low_bytes: u32,
 }
 
 impl Long {
@@ -257,9 +257,9 @@ pub struct Double {
      *  Then the floating-point value equals the double value of the mathematical
      *  expression s · m · 2e-1075.
      */
-    high_bytes: u32,
+    pub high_bytes: u32,
     /// **low_bytes**
-    low_bytes: u32,
+    pub low_bytes: u32,
 }
 
 impl Double {
@@ -275,7 +275,7 @@ impl Double {
 #[derive(Clone, Debug)]
 /// [Class Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A646%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C396%2Cnull%5D)
 pub struct Class {
-    pub tag: u8,
+    tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the
@@ -283,7 +283,7 @@ pub struct Class {
      *  CONSTANT_Utf8_info structure (§4.4.7) representing a valid binary class or
      *  interface name encoded in internal form (§4.2.1).
      */
-    pub(crate) name_index: u16,
+    pub name_index: u16,
 }
 
 impl Class {
@@ -298,7 +298,7 @@ impl Class {
 #[derive(Clone, Debug)]
 /// [String Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A653%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C388%2Cnull%5D)
 pub struct String {
-    pub(crate) tag: u8,
+    tag: u8,
     /**
      * **string_index**\
      *  The value of the string_index item must be a valid index into the
@@ -306,7 +306,7 @@ pub struct String {
      *  CONSTANT_Utf8_info structure (§4.4.7) representing the sequence of Unicode
      *  code points to which the String object is to be initialized.
      */
-    pub(crate) string_index: u16,
+    pub string_index: u16,
 }
 
 impl String {
@@ -408,7 +408,7 @@ pub struct InterfaceMethodref {
      *  In a CONSTANT_InterfaceMethodref_info structure, the class_index item
      *  must be an interface type, not a class type.
      */
-    class_index: u16,
+    pub class_index: u16,
     /**
      * **name_and_type_index**\
      *  The value of the name_and_type_index item must be a valid index into
@@ -416,7 +416,7 @@ pub struct InterfaceMethodref {
      *  CONSTANT_NameAndType_info structure (§4.4.6). This constant_pool entry
      *  indicates the name and descriptor of the field or method.
      */
-    name_and_type_index: u16,
+    pub name_and_type_index: u16,
 }
 
 impl InterfaceMethodref {
@@ -449,7 +449,7 @@ pub struct NameAndType {
      *  CONSTANT_Utf8_info structure (§4.4.7) representing a valid field descriptor
      *  or method descriptor (§4.3.2, §4.3.3).
      */
-    descriptor_index: u16,
+    pub descriptor_index: u16,
 }
 
 impl NameAndType {
@@ -473,7 +473,7 @@ pub struct MethodType {
      *  CONSTANT_Utf8_info structure (§4.4.7) representing a method descriptor
      *  (§4.3.3).
      */
-    descriptor_index: u16,
+    pub descriptor_index: u16,
 }
 
 impl MethodType {
@@ -495,7 +495,7 @@ pub struct MethodHandle {
      *   value denotes the kind of this method handle, which characterizes its bytecode
      *   behavior (§5.4.3.5).
      */
-    reference_kind: u8,
+    pub reference_kind: u8,
     /**
      * **reference_index**\
      *   The value of the reference_index item must be a valid index into the
@@ -531,7 +531,7 @@ pub struct MethodHandle {
      *   If the value is 8 (REF_newInvokeSpecial), the name of the method represented
      *   by a CONSTANT_Methodref_info structure must be <init>.
      */
-    reference_index: u16,
+    pub reference_index: u16,
 }
 
 impl MethodHandle {
@@ -559,7 +559,7 @@ pub struct Dynamic {
      *  are detected when classes are loaded (a potentially expensive check), we permit cycles
      *  initially but mandate a failure at resolution (§5.4.3.6)
      */
-    bootstrap_method_attr_index: u16,
+    pub bootstrap_method_attr_index: u16,
     /**
      * **name_and_type_index**\
      *  The value of the name_and_type_index item must be a valid index into
@@ -569,7 +569,7 @@ pub struct Dynamic {
      *  In a CONSTANT_Dynamic_info structure, the indicated descriptor must be a field
      *  descriptor (§4.3.2).
      */
-    name_and_type_index: u16,
+    pub name_and_type_index: u16,
 }
 
 impl Dynamic {
@@ -592,7 +592,7 @@ pub struct InvokeDynamic {
      *  into the bootstrap_methods array of the bootstrap method table of this class
      *  file (§4.7.23).
      */
-    bootstrap_method_attr_index: u16,
+    pub bootstrap_method_attr_index: u16,
     /**
      * **name_and_type_index**\
      *  The value of the name_and_type_index item must be a valid index into
@@ -603,7 +603,7 @@ pub struct InvokeDynamic {
      *  In a CONSTANT_InvokeDynamic_info structure, the indicated descriptor must
      *  be a method descriptor (§4.3.3).
      */
-    name_and_type_index: u16,
+    pub name_and_type_index: u16,
 }
 
 impl InvokeDynamic {
@@ -636,7 +636,7 @@ pub struct Module {
      *  access_flags item has the ACC_MODULE flag set. In all other class files, a
      *  CONSTANT_Module_info structure is illegal.
      */
-    name_index: u16,
+    pub name_index: u16,
 }
 
 impl Module {
@@ -664,7 +664,7 @@ pub struct Package {
      *  access_flags item has the ACC_MODULE flag set. In all other class files, a
      *  CONSTANT_Package_info structure is illegal.
      */
-    name_index: u16,
+    pub name_index: u16,
 }
 
 impl Package {
