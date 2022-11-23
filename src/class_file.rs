@@ -110,8 +110,12 @@ impl FieldInfo {
             constant_pool[self.name_index as usize]
         ));
         if let ConstantPool::Utf8(desc) = &constant_pool[self.descriptor_index as usize] {
-            let descriptors: Vec<FieldDescriptor> = Vec::from(desc.to_owned());
-            output.push_str(&format!("\tDescriptor: {:?}\n", descriptors));
+            let desc_option: Option<Vec<FieldDescriptor>> = Option::from(desc.to_owned());
+            if let Some(descriptors) = desc_option {
+                output.push_str(&format!("\tDescriptor: {:?}\n", descriptors));
+            } else {
+                output.push_str(&format!("\tDescriptor: []\n"));
+            }
         }
         output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
         output.push_str(&format!("\tAttributes: {:#?}\n", self.attributes));
@@ -186,8 +190,12 @@ impl MethodInfo {
             constant_pool[self.name_index as usize]
         ));
         if let ConstantPool::Utf8(desc) = &constant_pool[self.descriptor_index as usize] {
-            let descriptors: Vec<MethodDescriptor> = Vec::from(desc.to_owned());
-            output.push_str(&format!("\tDescriptor: {:?}\n", descriptors));
+            let desc_option: Option<Vec<MethodDescriptor>> = Option::from(desc.to_owned());
+            if let Some(descriptors) = desc_option {
+                output.push_str(&format!("\tDescriptor: {:?}\n", descriptors));
+            } else {
+                output.push_str(&format!("\tDescriptor: []\n"));
+            }
         }
         output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
         output.push_str(&format!("\tAttributes: {:#?}\n", self.attributes));
