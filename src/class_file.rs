@@ -157,9 +157,9 @@ impl MethodInfo {
         })
     }
 
-    pub fn to_pretty_fmt(self, constant_pool: &[ConstantPool]) -> String {
+    pub fn pretty_fmt(self, constant_pool: &[ConstantPool]) -> String {
         let mut output = String::new();
-        output.push_str(&format!("MethodInfo {{\n"));
+        output.push_str("MethodInfo {\n");
         output.push_str(&format!("\tFlags: {:?}\n", self.access_flags));
         output.push_str(&format!(
             "\tName: {:?}\n",
@@ -171,7 +171,7 @@ impl MethodInfo {
         ));
         output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
         output.push_str(&format!("\tAttributes: {:#?}\n", self.attributes));
-        output.push_str(&format!("}}\n"));
+        output.push_str("}\n");
 
         output
     }
@@ -550,7 +550,7 @@ impl ClassFile {
         output.push_str(&format!("Fields:\n{:#?}\n", self.fields));
         output.push_str(&format!("Method Count: {:#}\n", self.methods_count));
         for m in self.methods.clone() {
-            output.push_str(&m.to_pretty_fmt(&self.constant_pool));
+            output.push_str(&m.pretty_fmt(&self.constant_pool));
         }
         output.push_str(&format!(
             "Attributes: {:#}\n{:#?}",
@@ -579,13 +579,11 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
             ),
         ));
     }
-    if class.access_flags.contains(&ClassAccessFlags::AccModule) {
-        if class.access_flags.len() > 1 {
-            return Err(FormatError::new(
-                FormatCause::TooManyFlags,
-                "Too many flags for a Module class",
-            ));
-        }
+    if class.access_flags.contains(&ClassAccessFlags::AccModule) && class.access_flags.len() > 1 {
+        return Err(FormatError::new(
+            FormatCause::TooManyFlags,
+            "Too many flags for a Module class",
+        ));
     }
     // • All predefined attributes (§4.7) must be of the proper
     //      length, except for StackMapTable, RuntimeVisibleAnnotations,
@@ -593,6 +591,8 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
     //      RuntimeInvisibleParameterAnnotations,
     //      RuntimeVisibleTypeAnnotations, RuntimeInvisibleTypeAnnotations, and
     //      AnnotationDefault.
+    // NOTE: Due to the nature of our implementation, attributes should not be able to
+    //       be of incorrect length without there being an error elsewhere in the class loader
 
     // • The constant pool must satisfy the constraints documented throughout §4.4
     for constant in &class.constant_pool {
@@ -744,11 +744,7 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                 };
                 let Some(AttributeInfo::BootstrapMethods(bm)) =
                     class.attributes.iter().find(|a| {
-                        if let AttributeInfo::BootstrapMethods(_) = a {
-                            true
-                        } else {
-                            false
-                        }
+                        matches!(a, AttributeInfo::BootstrapMethods(_))
                     })
                 else {
                     return Err(FormatError::new(
@@ -772,11 +768,7 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                 };
                 let Some(AttributeInfo::BootstrapMethods(bm)) =
                     class.attributes.iter().find(|a| {
-                        if let AttributeInfo::BootstrapMethods(_) = a {
-                            true
-                        } else {
-                            false
-                        }
+                        matches!(a, AttributeInfo::BootstrapMethods(_))
                     })
                 else {
                     return Err(FormatError::new(

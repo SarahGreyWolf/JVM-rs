@@ -1,3 +1,5 @@
+#![allow(clippy::enum_variant_names)]
+
 pub mod class_format_check {
     use std::error::Error;
     use std::fmt::Display;

@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(clippy::enum_variant_names)]
 
 use core::num;
 use std::{error::Error, io::Cursor};

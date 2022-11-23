@@ -1,3 +1,5 @@
+#![allow(clippy::enum_variant_names)]
+
 #[repr(u16)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// [Class Access Flags](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#page=85)
