@@ -6,6 +6,7 @@ use std::error::Error;
 use crate::access_flags::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use crate::attributes;
 use crate::constants::{self, Utf8};
+use crate::descriptors::{FieldDescriptor, MethodDescriptor};
 use crate::errors::{
     class_format_check::{FormatCause, FormatError},
     class_loading::{LoadingCause, LoadingError},
@@ -100,6 +101,25 @@ impl FieldInfo {
         })
     }
 
+    pub fn pretty_fmt(self, constant_pool: &[ConstantPool]) -> String {
+        let mut output = String::new();
+        output.push_str("FieldInfo {\n");
+        output.push_str(&format!("\tFlags: {:?}\n", self.access_flags));
+        output.push_str(&format!(
+            "\tName: {:?}\n",
+            constant_pool[self.name_index as usize]
+        ));
+        if let ConstantPool::Utf8(desc) = &constant_pool[self.descriptor_index as usize] {
+            let descriptors: Vec<FieldDescriptor> = Vec::from(desc.to_owned());
+            output.push_str(&format!("\tDescriptor: {:?}\n", descriptors));
+        }
+        output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
+        output.push_str(&format!("\tAttributes: {:#?}\n", self.attributes));
+        output.push_str("}\n");
+
+        output
+    }
+
     pub fn get_type(&self, constant_pool: &[ConstantPool]) -> String {
         let mut descriptor = if let ConstantPool::Utf8(desc) =
             constant_pool[self.descriptor_index as usize].clone()
@@ -165,10 +185,10 @@ impl MethodInfo {
             "\tName: {:?}\n",
             constant_pool[self.name_index as usize]
         ));
-        output.push_str(&format!(
-            "\tDescriptor: {:?}\n",
-            constant_pool[self.descriptor_index as usize]
-        ));
+        if let ConstantPool::Utf8(desc) = &constant_pool[self.descriptor_index as usize] {
+            let descriptors: Vec<MethodDescriptor> = Vec::from(desc.to_owned());
+            output.push_str(&format!("\tDescriptor: {:?}\n", descriptors));
+        }
         output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
         output.push_str(&format!("\tAttributes: {:#?}\n", self.attributes));
         output.push_str("}\n");
@@ -547,7 +567,10 @@ impl ClassFile {
             self.interfaces.len(),
             self.interfaces
         ));
-        output.push_str(&format!("Fields:\n{:#?}\n", self.fields));
+        output.push_str(&format!("Fields: Count {}\n", self.field_count));
+        for f in self.fields.clone() {
+            output.push_str(&f.pretty_fmt(&self.constant_pool));
+        }
         output.push_str(&format!("Method Count: {:#}\n", self.methods_count));
         for m in self.methods.clone() {
             output.push_str(&m.pretty_fmt(&self.constant_pool));
