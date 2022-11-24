@@ -11,6 +11,7 @@ pub mod class_format_check {
         IncorrectMagic(u32),
         ExtraBytes,
         InvalidIndex(u16),
+        InvalidDescriptor(String),
         InvalidReferenceKind(u8),
         InvalidConstant(ConstantPool),
         MissingAttribute,
@@ -31,6 +32,7 @@ pub mod class_format_check {
                 FormatCause::MissingAttribute => write!(f, "MissingAttribute"),
                 FormatCause::InvalidConstant(c) => write!(f, "InvalidConstant: {:?}", c),
                 FormatCause::TooManyFlags => write!(f, "TooManyFlags"),
+                FormatCause::InvalidDescriptor(desc) => write!(f, "InvalidDescriptor: {desc}"),
             }
         }
     }

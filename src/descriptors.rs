@@ -9,6 +9,16 @@ pub enum FieldDescriptor {
     ArrayType,
 }
 
+impl Into<String> for FieldDescriptor {
+    fn into(self) -> String {
+        match self {
+            FieldDescriptor::BaseType(r#type) => r#type,
+            FieldDescriptor::ObjectType(object) => object,
+            FieldDescriptor::ArrayType => "[]".into(),
+        }
+    }
+}
+
 impl From<Utf8> for Option<Vec<FieldDescriptor>> {
     fn from(value: Utf8) -> Self {
         let mut descriptors = vec![];
@@ -27,7 +37,6 @@ impl From<Utf8> for Option<Vec<FieldDescriptor>> {
             }
             if in_object {
                 name.push(c as char);
-                println!("Hit this in iteration {number}");
                 peekable.next();
                 continue;
             }
@@ -57,6 +66,16 @@ pub enum MethodDescriptor {
     ParameterDescriptor(FieldDescriptor),
     ReturnDescriptor(FieldDescriptor),
     VoidReturn,
+}
+
+impl Into<String> for MethodDescriptor {
+    fn into(self) -> String {
+        match self {
+            MethodDescriptor::ParameterDescriptor(fd) => fd.into(),
+            MethodDescriptor::ReturnDescriptor(fd) => fd.into(),
+            MethodDescriptor::VoidReturn => "void".into(),
+        }
+    }
 }
 
 impl From<Utf8> for Option<Vec<MethodDescriptor>> {

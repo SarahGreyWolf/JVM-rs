@@ -15,7 +15,7 @@ pub enum Tags {
     String = 8,
     Fieldref = 9,
     Methodref = 10,
-    InterfaceMethodRef = 11,
+    InterfaceMethodref = 11,
     NameAndType = 12,
     MethodHandle = 15,
     MethodType = 16,
@@ -38,7 +38,7 @@ impl From<u8> for Tags {
             8 => Tags::String,
             9 => Tags::Fieldref,
             10 => Tags::Methodref,
-            11 => Tags::InterfaceMethodRef,
+            11 => Tags::InterfaceMethodref,
             12 => Tags::NameAndType,
             15 => Tags::MethodHandle,
             16 => Tags::MethodType,
@@ -756,7 +756,7 @@ pub fn read_constant_pool(
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::InterfaceMethodRef => ConstantPool::InterfaceMethodRef(InterfaceMethodref::new(
+            Tags::InterfaceMethodref => ConstantPool::InterfaceMethodref(InterfaceMethodref::new(
                 Tags::from(tag),
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
