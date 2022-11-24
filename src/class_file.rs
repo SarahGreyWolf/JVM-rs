@@ -125,10 +125,10 @@ impl FieldInfo {
     }
 
     pub fn get_type(&self, constant_pool: &[ConstantPool]) -> String {
-        let mut descriptor = if let ConstantPool::Utf8(desc) =
+        let mut descriptor: String = if let ConstantPool::Utf8(desc) =
             constant_pool[self.descriptor_index as usize].clone()
         {
-            desc.get_string()
+            String::from(&desc)
         } else {
             unreachable!(
                 "Could not get descriptor for method at index {}",
@@ -167,9 +167,6 @@ impl MethodInfo {
         constant_pool: &[ConstantPool],
         major_version: Option<u16>,
     ) -> Result<MethodInfo, Box<dyn Error>> {
-        // if let ConstantPool::Utf8(n) = &constant_pool[name_index as usize-1] {
-        //     println!("Name: {}", n.get_string());
-        // }
         let mut attributes = Vec::with_capacity(attributes_count as usize);
         attributes::read_attributes(constant_pool, &mut attributes, cursor, major_version)?;
         Ok(MethodInfo {
@@ -205,10 +202,10 @@ impl MethodInfo {
     }
 
     pub fn get_params(&self, constant_pool: &[ConstantPool]) -> Vec<String> {
-        let descriptor = if let ConstantPool::Utf8(desc) =
+        let descriptor: String = if let ConstantPool::Utf8(desc) =
             constant_pool[self.descriptor_index as usize].clone()
         {
-            desc.get_string()
+            String::from(&desc)
         } else {
             unreachable!(
                 "Could not get descriptor for method at index {}",
@@ -255,10 +252,10 @@ impl MethodInfo {
     }
 
     pub fn get_return(&self, constant_pool: &[ConstantPool]) -> String {
-        let descriptor = if let ConstantPool::Utf8(desc) =
+        let descriptor: String = if let ConstantPool::Utf8(desc) =
             constant_pool[self.descriptor_index as usize].clone()
         {
-            desc.get_string()
+            String::from(&desc)
         } else {
             unreachable!(
                 "Could not get descriptor for method at index {}",
@@ -666,7 +663,7 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                 let descriptor: Option<Vec<FieldDescriptor>> = Option::from(desc.clone());
                 if descriptor.is_none() {
                     return Err(FormatError::new(
-                        FormatCause::InvalidDescriptor(desc.get_string()),
+                        FormatCause::InvalidDescriptor(String::from(desc)),
                         "Fieldref name_and_type_index.descriptor_index was a MethodDescriptor",
                     ));
                 }
@@ -693,7 +690,7 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                 let descriptor: Option<Vec<MethodDescriptor>> = Option::from(desc.clone());
                 if descriptor.is_none() {
                     return Err(FormatError::new(
-                        FormatCause::InvalidDescriptor(desc.get_string()),
+                        FormatCause::InvalidDescriptor(String::from(desc)),
                         "Fieldref name_and_type_index.descriptor_index was a MethodDescriptor",
                     ));
                 }

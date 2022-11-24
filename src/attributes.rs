@@ -713,12 +713,6 @@ impl Exceptions {
                 for _ in 0..exceptions.capacity() {
                     let index = cursor.read_u16::<BE>()?;
                     if let ConstantPool::Class(class) = &constant_pool[index as usize] {
-                        // if let ConstantPool::Utf8(name) = &constant_pool[class.1 as usize] {
-                        //     match name.get_string() {
-                        //         ""
-                        //         _ => unreachable!("Class was not a valid type")
-                        //     }
-                        // }
                         exceptions.push(index);
                     } else {
                         unreachable!("Index into ConstantPool was not a Class Constant");
@@ -3158,8 +3152,7 @@ pub(crate) fn read_attributes(
         let name = &constant_pool[name_index as usize];
         let length = cursor.read_u32::<BE>()?;
         if let ConstantPool::Utf8(n) = name {
-            // println!("{} begins at {:#04X?}", n.get_string(), cursor.position() - 6);
-            let attribute = match n.get_string().as_str() {
+            let attribute = match String::from(n).as_str() {
                 "ConstantValue" => AttributeInfo::ConstantValue(ConstantValue::new(
                     name_index,
                     length,
@@ -3333,7 +3326,7 @@ pub(crate) fn read_attributes(
                 ),
                 _ => {
                     cursor.set_position(cursor.position() + length as u64);
-                    AttributeInfo::Unknown(n.get_string())
+                    AttributeInfo::Unknown(String::from(n))
                 }
             };
             attributes.push(attribute);

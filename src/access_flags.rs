@@ -77,9 +77,11 @@ impl ClassAccessFlags {
         }
         flags
     }
+}
 
-    pub fn get_string(&self) -> String {
-        match self {
+impl From<&ClassAccessFlags> for String {
+    fn from(value: &ClassAccessFlags) -> Self {
+        match value {
             ClassAccessFlags::None => "none",
             ClassAccessFlags::AccPublic => "public",
             ClassAccessFlags::AccPrivate => "private",
@@ -180,9 +182,11 @@ impl MethodAccessFlags {
         }
         flags
     }
+}
 
-    pub fn get_string(&self) -> String {
-        match self {
+impl From<&MethodAccessFlags> for String {
+    fn from(value: &MethodAccessFlags) -> Self {
+        match value {
             MethodAccessFlags::None => "none",
             MethodAccessFlags::AccPublic => "public",
             MethodAccessFlags::AccPrivate => "private",
@@ -261,9 +265,11 @@ impl FieldAccessFlags {
         }
         flags
     }
+}
 
-    pub fn get_string(&self) -> String {
-        match self {
+impl From<&FieldAccessFlags> for String {
+    fn from(value: &FieldAccessFlags) -> Self {
+        match value {
             FieldAccessFlags::None => "none",
             FieldAccessFlags::AccPublic => "public",
             FieldAccessFlags::AccPrivate => "private",
@@ -324,8 +330,11 @@ impl ParameterAccessFlags {
         }
         flags
     }
-    pub fn get_string(&self) -> String {
-        match self {
+}
+
+impl From<&ParameterAccessFlags> for String {
+    fn from(value: &ParameterAccessFlags) -> Self {
+        match value {
             ParameterAccessFlags::AccFinal => "final",
             ParameterAccessFlags::AccSynthetic => "synthetic",
             ParameterAccessFlags::AccMandated => "mandated",
@@ -373,8 +382,11 @@ pub mod module_flags {
             }
             flags
         }
-        pub fn get_string(&self) -> String {
-            match self {
+    }
+
+    impl From<&ModuleAccessFlags> for String {
+        fn from(value: &ModuleAccessFlags) -> Self {
+            match value {
                 ModuleAccessFlags::AccOpen => "open",
                 ModuleAccessFlags::AccSynthetic => "synthetic",
                 ModuleAccessFlags::AccMandated => "mandated",
@@ -437,8 +449,11 @@ pub mod module_flags {
             }
             flags
         }
-        pub fn get_string(&self) -> String {
-            match self {
+    }
+
+    impl From<&RequiresAccessFlags> for String {
+        fn from(value: &RequiresAccessFlags) -> Self {
+            match value {
                 RequiresAccessFlags::AccTransistive => "trasnsistive",
                 RequiresAccessFlags::AccStaticPhase => "static_phase",
                 RequiresAccessFlags::AccSynthetic => "synthetic",
@@ -480,8 +495,11 @@ pub mod module_flags {
             }
             flags
         }
-        pub fn get_string(&self) -> String {
-            match self {
+    }
+
+    impl From<&ExportsAccessFlags> for String {
+        fn from(value: &ExportsAccessFlags) -> Self {
+            match value {
                 ExportsAccessFlags::AccSynthetic => "synthetic",
                 ExportsAccessFlags::AccMandated => "mandated",
             }
@@ -520,8 +538,11 @@ pub mod module_flags {
             }
             flags
         }
-        pub fn get_string(&self) -> String {
-            match self {
+    }
+
+    impl From<&OpensAccessFlags> for String {
+        fn from(value: &OpensAccessFlags) -> Self {
+            match value {
                 OpensAccessFlags::AccSynthetic => "synthetic",
                 OpensAccessFlags::AccMandated => "mandated",
             }
