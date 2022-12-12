@@ -1,6 +1,6 @@
 use crate::constants::Utf8;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// [FieldDescriptors](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A677%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C167%2Cnull%5D)
 pub enum FieldDescriptor {
     BaseType(String),
@@ -60,7 +60,7 @@ impl From<Utf8> for Option<Vec<FieldDescriptor>> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// [MethodDescriptors](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A415%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C279.293%2Cnull%5D)
 pub enum MethodDescriptor {
     ParameterDescriptor(FieldDescriptor),
@@ -89,7 +89,6 @@ impl From<Utf8> for Option<Vec<MethodDescriptor>> {
             let c = **c;
             if c == b')' {
                 in_params = false;
-                in_return = true;
                 let f_descriptors: Option<Vec<FieldDescriptor>> =
                     Option::from(Utf8::from(collected.as_str()));
                 if let Some(f_descriptors) = f_descriptors {
@@ -99,6 +98,9 @@ impl From<Utf8> for Option<Vec<MethodDescriptor>> {
                 }
                 collected = String::new();
                 peekable.next();
+                if peekable.peek() != Some(&&b'V') {
+                    in_return = true;
+                }
                 continue;
             }
             if in_params || in_return {

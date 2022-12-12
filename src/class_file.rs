@@ -681,6 +681,12 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                         "MethodRef name_and_type_index was not a NameAndType Constant"
                     ));
                 };
+                let ConstantPool::Utf8(name) = class.get_from_constant_pool(nat.name_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(nat.descriptor_index),
+                        "MethodRef name_and_type_index.name_index was not a Utf8 Constant"
+                    ));
+                };
                 let ConstantPool::Utf8(desc) = class.get_from_constant_pool(nat.descriptor_index)? else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(nat.descriptor_index),
@@ -688,10 +694,19 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                     ));
                 };
                 let descriptor: Option<Vec<MethodDescriptor>> = Option::from(desc.clone());
-                if descriptor.is_none() {
+                if let Some(descrip) = descriptor {
+                    let name = String::from(name);
+                    if name == "<init>" && !descrip.contains(&MethodDescriptor::VoidReturn) {
+                        println!("{:?}", descrip);
+                        return Err(FormatError::new(
+                            FormatCause::InvalidDescriptor(String::from(desc)),
+                            "Methodref descriptor did not contain Void",
+                        ));
+                    }
+                } else {
                     return Err(FormatError::new(
                         FormatCause::InvalidDescriptor(String::from(desc)),
-                        "Fieldref name_and_type_index.descriptor_index was a MethodDescriptor",
+                        "Methodref name_and_type_index.descriptor_index was a FieldDescriptor",
                     ));
                 }
             }
@@ -699,15 +714,28 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                 let ConstantPool::Class(_) = class.get_from_constant_pool(im.class_index)? else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(im.class_index),
-                        "InterfaceMethodRef class_index was not a Class Constant"
+                        "InterfaceMethodref class_index was not a Class Constant"
                     ));
                 };
-                let ConstantPool::NameAndType(_) = class.get_from_constant_pool(im.name_and_type_index)? else {
+                let ConstantPool::NameAndType(nat) = class.get_from_constant_pool(im.name_and_type_index)? else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(im.name_and_type_index),
-                        "InterfaceMethodRef name_and_type_index was not a NameAndType Constant"
+                        "InterfaceMethodref name_and_type_index was not a NameAndType Constant"
                     ));
                 };
+                let ConstantPool::Utf8(desc) = class.get_from_constant_pool(nat.descriptor_index)? else {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidIndex(nat.descriptor_index),
+                        "InterfaceMethodref name_and_type_index.descriptor_index was not a Utf8 Constant"
+                    ));
+                };
+                let descriptor: Option<Vec<MethodDescriptor>> = Option::from(desc.clone());
+                if descriptor.is_none() {
+                    return Err(FormatError::new(
+                        FormatCause::InvalidDescriptor(String::from(desc)),
+                        "InterfaceMethodref name_and_type_index.descriptor_index was a FieldDescriptor",
+                    ));
+                }
             }
             ConstantPool::NameAndType(nt) => {
                 let ConstantPool::Utf8(_) = class.get_from_constant_pool(nt.name_index)? else {
@@ -759,7 +787,7 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                                         FormatCause::InvalidIndex(
                                             mh.reference_index,
                                         ),
-                                        "MethodHandle reference_index was neither a Methodref or InterfaceMethodRef Constant",
+                                        "MethodHandle reference_index was neither a Methodref or InterfaceMethodref Constant",
                                     ));
                                 }
                             }
@@ -769,7 +797,7 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                         let ConstantPool::InterfaceMethodref(_) = class.get_from_constant_pool(mh.reference_index)? else {
                             return Err(FormatError::new(
                                 FormatCause::InvalidIndex(mh.reference_index),
-                                "MethodHandle reference_index was not a InterfaceMethodRef Constant"
+                                "MethodHandle reference_index was not a InterfaceMethodref Constant"
                             ));
                         };
                     }
