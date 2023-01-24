@@ -1,4 +1,5 @@
 #![allow(clippy::enum_variant_names)]
+#![allow(unused)]
 
 use core::num;
 use std::{error::Error, io::Cursor};
@@ -6,9 +7,45 @@ use std::{error::Error, io::Cursor};
 use byteorder::{ReadBytesExt, BE};
 
 use crate::access_flags::{module_flags, ParameterAccessFlags};
-use crate::class_file::{AttributeInfo, ConstantPool};
+use crate::constants::ConstantPool;
 
 use crate::errors::class_loading::{LoadingCause, LoadingError};
+
+/// [Attributes](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A1244%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
+#[derive(Clone, Debug)]
+pub enum AttributeInfo {
+    ConstantValue(ConstantValue),
+    Code(Code),
+    StackMapTable(StackMapTable),
+    Exceptions(Exceptions),
+    InnerClasses(InnerClasses),
+    EnclosingMethod(EnclosingMethod),
+    Synthetic(Synthetic),
+    Signature(Signature),
+    SourceFile(SourceFile),
+    SourceDebugExtension(SourceDebugExtension),
+    LineNumberTable(LineNumberTable),
+    LocalVariableTable(LocalVariableTable),
+    LocalVariableTypeTable(LocalVariableTypeTable),
+    Deprecated(Deprecated),
+    RuntimeVisibleAnnotations(RuntimeVisibleAnnotations),
+    RuntimeInvisibleAnnotations(RuntimeInvisibleAnnotations),
+    RuntimeVisibleParameterAnnotations(RuntimeVisibleParameterAnnotations),
+    RuntimeInvisibleParameterAnnotations(RuntimeInvisibleParameterAnnotations),
+    RuntimeVisibleTypeAnnotations(RuntimeVisibleTypeAnnotations),
+    RuntimeInvisibleTypeAnnotations(RuntimeInvisibleTypeAnnotations),
+    AnnotationDefault(AnnotationDefault),
+    BootstrapMethods(BootstrapMethods),
+    MethodParameters(MethodParameters),
+    Module(Module),
+    ModulePackages(ModulePackages),
+    ModuleMainClass(ModuleMainClass),
+    NestHost(NestHost),
+    NestMembers(NestMembers),
+    Record(Record),
+    PermittedSubclasses(PermittedSubclasses),
+    Unknown(String),
+}
 
 /*
  * Common values:\
@@ -199,7 +236,7 @@ pub struct Code {
      *  The rules concerning non-predefined attributes in the attributes table of a
      *  Code attribute are given in §4.7.1.
      */
-    pub attributes: Vec<crate::class_file::AttributeInfo>,
+    pub attributes: Vec<AttributeInfo>,
 }
 
 impl Code {
@@ -968,7 +1005,7 @@ pub struct SourceFile {
      *  such platform-specific additional information must be supplied by the run-time interpreter
      *  or development tool at the time the file name is actually used.
      */
-    pub(crate) sourcefile_index: u16,
+    pub sourcefile_index: u16,
 }
 
 impl SourceFile {
@@ -3017,12 +3054,12 @@ struct RecordComponentInfo {
      *  The rules concerning non-predefined attributes in the attributes table of
      *  a record_component_info structure are given in §4.7.1.
      */
-    attributes: Vec<crate::class_file::AttributeInfo>,
+    attributes: Vec<AttributeInfo>,
 }
 
 impl RecordComponentInfo {
     pub fn new(
-        constant_pool: &[crate::class_file::ConstantPool],
+        constant_pool: &[crate::constants::ConstantPool],
         version: Option<u16>,
         cursor: &mut Cursor<&[u8]>,
     ) -> Result<RecordComponentInfo, Box<dyn Error>> {
@@ -3030,8 +3067,7 @@ impl RecordComponentInfo {
         let descriptor_index = cursor.read_u16::<BE>()?;
 
         let attributes_count = cursor.read_u16::<BE>()?;
-        let mut attributes: Vec<crate::class_file::AttributeInfo> =
-            Vec::with_capacity(attributes_count as usize);
+        let mut attributes: Vec<AttributeInfo> = Vec::with_capacity(attributes_count as usize);
         read_attributes(constant_pool, &mut attributes, cursor, version)?;
         assert!(attributes.len() == attributes_count as usize);
         Ok(RecordComponentInfo {
@@ -3067,7 +3103,7 @@ impl Record {
         attribute_name_index: u16,
         attribute_length: u32,
         components_count: u16,
-        constant_pool: &[crate::class_file::ConstantPool],
+        constant_pool: &[crate::constants::ConstantPool],
         version: Option<u16>,
         cursor: &mut Cursor<&[u8]>,
     ) -> Result<Record, Box<dyn Error>> {
@@ -3140,9 +3176,9 @@ pub struct Unknown {
     attribute_length: u32,
 }
 
-pub(crate) fn read_attributes(
-    constant_pool: &[crate::class_file::ConstantPool],
-    attributes: &mut Vec<crate::class_file::AttributeInfo>,
+pub fn read_attributes(
+    constant_pool: &[crate::constants::ConstantPool],
+    attributes: &mut Vec<AttributeInfo>,
     cursor: &mut Cursor<&[u8]>,
     version: Option<u16>,
 ) -> Result<(), Box<dyn Error>> {

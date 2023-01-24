@@ -4,7 +4,7 @@ pub mod class_format_check {
     use std::error::Error;
     use std::fmt::Display;
 
-    use crate::class_file::ConstantPool;
+    use crate::constants::ConstantPool;
 
     #[derive(Debug)]
     pub enum FormatCause {
@@ -21,7 +21,7 @@ pub mod class_format_check {
     impl Display for FormatCause {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                FormatCause::IncorrectMagic(t) => write!(f, "MagicIncorrect: {:02X?}", t),
+                FormatCause::IncorrectMagic(t) => write!(f, "MagicIncorrect: {t:02X?}"),
                 FormatCause::ExtraBytes => write!(f, "ExtraBytes"),
                 FormatCause::InvalidIndex(index) => {
                     write!(f, "InvalidIndex: {index}")
@@ -30,7 +30,7 @@ pub mod class_format_check {
                     write!(f, "InvalidReferenceKind: {kind}")
                 }
                 FormatCause::MissingAttribute => write!(f, "MissingAttribute"),
-                FormatCause::InvalidConstant(c) => write!(f, "InvalidConstant: {:?}", c),
+                FormatCause::InvalidConstant(c) => write!(f, "InvalidConstant: {c:?}"),
                 FormatCause::TooManyFlags => write!(f, "TooManyFlags"),
                 FormatCause::InvalidDescriptor(desc) => write!(f, "InvalidDescriptor: {desc}"),
             }
@@ -65,7 +65,7 @@ pub mod class_loading {
     use std::error::Error;
     use std::fmt::Display;
 
-    use crate::class_file::ConstantPool;
+    use crate::constants::ConstantPool;
 
     #[derive(Debug)]
     pub enum LoadingCause {
@@ -81,7 +81,7 @@ pub mod class_loading {
             match self {
                 LoadingCause::InvalidConstantTag(t) => write!(f, "InvalidConstantTag: {t}"),
                 LoadingCause::InvalidAttributeNameIndex(t) => {
-                    write!(f, "InvalidAttributeNameIndex: {:?}", t)
+                    write!(f, "InvalidAttributeNameIndex: {t:?}")
                 }
                 LoadingCause::InvalidTargetInfoValue(t) => {
                     write!(f, "InvalidTargetInfoValue: {t}")

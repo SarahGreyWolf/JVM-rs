@@ -1,5 +1,5 @@
 [package]
-name = "jvm_rs"
+name = "jloader"
 version = "0.1.0"
 edition = "2021"
 license-file = "LICENSE"
@@ -10,15 +10,5 @@ authors = ["SarahGreyWolf <m.sarahgreywolf@outlook.com>"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-[profile.release]
-opt-level="z"
-strip="symbols"
-lto=true
-
 [dependencies]
 byteorder = "1.4.3"
-jloader = {path = "./jloader"}
-
-[workspace]
-members = ["jloader"]
-

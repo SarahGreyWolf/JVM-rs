@@ -4,6 +4,29 @@ use byteorder::{ReadBytesExt, BE};
 
 use crate::errors::class_loading::{LoadingCause, LoadingError};
 
+/// [The Constant Pool](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2201%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C256%2Cnull%5D)
+#[derive(Clone, Debug)]
+pub enum ConstantPool {
+    Utf8(Utf8),
+    Integer(Integer),
+    Float(Float),
+    Long(Long),
+    Double(Double),
+    Class(Class),
+    String(String),
+    Fieldref(Fieldref),
+    Methodref(Methodref),
+    InterfaceMethodref(InterfaceMethodref),
+    NameAndType(NameAndType),
+    MethodHandle(MethodHandle),
+    MethodType(MethodType),
+    Dynamic(Dynamic),
+    InvokeDynamic(InvokeDynamic),
+    Module(Module),
+    Package(Package),
+    Unknown,
+}
+
 #[repr(u8)]
 pub enum Tags {
     Utf8 = 1,
@@ -54,9 +77,6 @@ impl From<u8> for Tags {
 #[derive(Clone)]
 /// [Utf8 Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A636%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C438%2Cnull%5D)
 pub struct Utf8 {
-    // FIXME: Seems completely redundant to care about the tag here for us
-    //        Definitely seems like something that would be mostly important for a union
-    tag: u8,
     /** The value of the length item gives the number of bytes in the bytes array (not
      *  the length of the resulting string).
      */
@@ -71,7 +91,6 @@ pub struct Utf8 {
 impl From<&str> for Utf8 {
     fn from(input: &str) -> Self {
         Utf8 {
-            tag: 1,
             length: input.len() as u16,
             bytes: input.as_bytes().to_vec(),
         }
@@ -79,10 +98,9 @@ impl From<&str> for Utf8 {
 }
 
 impl Utf8 {
-    pub fn new(tag: Tags, cursor: &mut Cursor<&[u8]>) -> Utf8 {
+    pub fn new(cursor: &mut Cursor<&[u8]>) -> Utf8 {
         let length = cursor.read_u16::<BE>().unwrap();
         Utf8 {
-            tag: tag as u8,
             length,
             bytes: {
                 let mut bytes = Vec::with_capacity(length as usize);
@@ -111,7 +129,6 @@ impl std::fmt::Debug for Utf8 {
 #[derive(Clone, Debug)]
 /// [Integer Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A653%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C136.8%2Cnull%5D)
 pub struct Integer {
-    tag: u8,
     /**
      * **bytes**\
      *  The bytes item of the CONSTANT_Integer_info structure represents the value
@@ -122,19 +139,13 @@ pub struct Integer {
 }
 
 impl Integer {
-    pub fn new(tag: Tags, bytes: u32) -> Integer {
-        Integer {
-            tag: tag as u8,
-            bytes,
-        }
-    }
+    pub fn new(bytes: u32) -> Integer { Integer { bytes } }
 }
 
 #[derive(Clone, Debug)]
 /// [Float Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A653%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C136.8%2Cnull%5D)
 // TODO: There is a LOT of stuff I need to consider for the actual VM, but not now
 pub struct Float {
-    tag: u8,
     /**
      * **bytes**\
      *  The bytes item of the CONSTANT_Float_info structure represents the value of
@@ -159,19 +170,13 @@ pub struct Float {
 }
 
 impl Float {
-    pub fn new(tag: Tags, bytes: u32) -> Float {
-        Float {
-            tag: tag as u8,
-            bytes,
-        }
-    }
+    pub fn new(bytes: u32) -> Float { Float { bytes } }
 }
 
 #[derive(Clone, Debug)]
 /// [Long Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A458%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 // TODO: There is a LOT of stuff I need to consider for the actual VM, but not now
 pub struct Long {
-    tag: u8,
     /**
      * **high_bytes**\
      *  The unsigned high_bytes and low_bytes items of the CONSTANT_Long_info
@@ -210,9 +215,8 @@ pub struct Long {
 }
 
 impl Long {
-    pub fn new(tag: Tags, high_bytes: u32, low_bytes: u32) -> Long {
+    pub fn new(high_bytes: u32, low_bytes: u32) -> Long {
         Long {
-            tag: tag as u8,
             high_bytes,
             low_bytes,
         }
@@ -223,7 +227,6 @@ impl Long {
 /// [Double Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A458%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 // TODO: There is a LOT of stuff I need to consider for the actual VM, but not now
 pub struct Double {
-    tag: u8,
     /**
      * **high_bytes**\
      *  The unsigned high_bytes and low_bytes items of the CONSTANT_Long_info
@@ -262,9 +265,8 @@ pub struct Double {
 }
 
 impl Double {
-    pub fn new(tag: Tags, high_bytes: u32, low_bytes: u32) -> Double {
+    pub fn new(high_bytes: u32, low_bytes: u32) -> Double {
         Double {
-            tag: tag as u8,
             high_bytes,
             low_bytes,
         }
@@ -274,7 +276,6 @@ impl Double {
 #[derive(Clone, Debug)]
 /// [Class Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A646%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C396%2Cnull%5D)
 pub struct Class {
-    tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the
@@ -286,18 +287,12 @@ pub struct Class {
 }
 
 impl Class {
-    pub fn new(tag: Tags, index: u16) -> Class {
-        Class {
-            tag: tag as u8,
-            name_index: index,
-        }
-    }
+    pub fn new(index: u16) -> Class { Class { name_index: index } }
 }
 
 #[derive(Clone, Debug)]
 /// [String Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A653%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C388%2Cnull%5D)
 pub struct String {
-    tag: u8,
     /**
      * **string_index**\
      *  The value of the string_index item must be a valid index into the
@@ -309,9 +304,8 @@ pub struct String {
 }
 
 impl String {
-    pub fn new(tag: Tags, index: u16) -> String {
+    pub fn new(index: u16) -> String {
         String {
-            tag: tag as u8,
             string_index: index,
         }
     }
@@ -320,7 +314,6 @@ impl String {
 #[derive(Clone, Debug)]
 /// [Fieldref Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A450%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C577%2Cnull%5D)
 pub struct Fieldref {
-    tag: u8,
     /**
      * **class_index**\
      *  The value of the class_index item must be a valid index into the
@@ -347,9 +340,8 @@ pub struct Fieldref {
 }
 
 impl Fieldref {
-    pub fn new(tag: Tags, class_index: u16, name_and_type_index: u16) -> Fieldref {
+    pub fn new(class_index: u16, name_and_type_index: u16) -> Fieldref {
         Fieldref {
-            tag: tag as u8,
             class_index,
             name_and_type_index,
         }
@@ -359,7 +351,6 @@ impl Fieldref {
 #[derive(Clone, Debug)]
 /// [Methodref Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A450%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C577%2Cnull%5D)
 pub struct Methodref {
-    tag: u8,
     /**
      * **class_index**\
      *  The value of the class_index item must be a valid index into the
@@ -384,9 +375,8 @@ pub struct Methodref {
 }
 
 impl Methodref {
-    pub fn new(tag: Tags, class_index: u16, name_and_type_index: u16) -> Methodref {
+    pub fn new(class_index: u16, name_and_type_index: u16) -> Methodref {
         Methodref {
-            tag: tag as u8,
             class_index,
             name_and_type_index,
         }
@@ -396,7 +386,6 @@ impl Methodref {
 #[derive(Clone, Debug)]
 /// [Methodref Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A450%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C577%2Cnull%5D)
 pub struct InterfaceMethodref {
-    tag: u8,
     /**
      * **class_index**\
      *  The value of the class_index item must be a valid index into the
@@ -419,9 +408,8 @@ pub struct InterfaceMethodref {
 }
 
 impl InterfaceMethodref {
-    pub fn new(tag: Tags, class_index: u16, name_and_type_index: u16) -> InterfaceMethodref {
+    pub fn new(class_index: u16, name_and_type_index: u16) -> InterfaceMethodref {
         InterfaceMethodref {
-            tag: tag as u8,
             class_index,
             name_and_type_index,
         }
@@ -431,7 +419,6 @@ impl InterfaceMethodref {
 #[derive(Clone, Debug)]
 /// [NameAndType Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A634%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C245%2Cnull%5D)
 pub struct NameAndType {
-    tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the
@@ -452,9 +439,8 @@ pub struct NameAndType {
 }
 
 impl NameAndType {
-    pub fn new(tag: Tags, name_index: u16, descriptor_index: u16) -> NameAndType {
+    pub fn new(name_index: u16, descriptor_index: u16) -> NameAndType {
         NameAndType {
-            tag: tag as u8,
             name_index,
             descriptor_index,
         }
@@ -464,7 +450,6 @@ impl NameAndType {
 #[derive(Clone, Debug)]
 /// [MethodType Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A668%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C235.18%2Cnull%5D)
 pub struct MethodType {
-    tag: u8,
     /**
      * **descriptor_index**\
      *  The value of the descriptor_index item must be a valid index into the
@@ -476,12 +461,7 @@ pub struct MethodType {
 }
 
 impl MethodType {
-    pub fn new(tag: Tags, descriptor_index: u16) -> MethodType {
-        MethodType {
-            tag: tag as u8,
-            descriptor_index,
-        }
-    }
+    pub fn new(descriptor_index: u16) -> MethodType { MethodType { descriptor_index } }
 }
 
 #[repr(u8)]
@@ -520,7 +500,6 @@ impl From<u8> for MethodHandleKinds {
 #[derive(Clone, Debug)]
 /// [MethodHandle constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A668%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C235.18%2Cnull%5D)
 pub struct MethodHandle {
-    tag: u8,
     /**
      * **reference_kind**\
      *   The value of the reference_kind item must be in the range 1 to 9. The
@@ -573,9 +552,8 @@ pub struct MethodHandle {
 }
 
 impl MethodHandle {
-    pub fn new(tag: Tags, reference_kind: u8, reference_index: u16) -> MethodHandle {
+    pub fn new(reference_kind: u8, reference_index: u16) -> MethodHandle {
         MethodHandle {
-            tag: tag as u8,
             reference_kind: MethodHandleKinds::from(reference_kind),
             reference_index,
         }
@@ -585,7 +563,6 @@ impl MethodHandle {
 /// [Dynamic Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A3782%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C370.8%2Cnull%5D)
 #[derive(Clone, Debug)]
 pub struct Dynamic {
-    tag: u8,
     /**
      * **bootstrap_method_attr_index**\
      *  The value of the bootstrap_method_attr_index item must be a valid index
@@ -611,9 +588,8 @@ pub struct Dynamic {
 }
 
 impl Dynamic {
-    pub fn new(tag: Tags, bootstrap_method_attr_index: u16, name_and_type_index: u16) -> Dynamic {
+    pub fn new(bootstrap_method_attr_index: u16, name_and_type_index: u16) -> Dynamic {
         Dynamic {
-            tag: tag as u8,
             bootstrap_method_attr_index,
             name_and_type_index,
         }
@@ -623,7 +599,6 @@ impl Dynamic {
 /// [InvokeDynamic Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A3782%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C370.8%2Cnull%5D)
 #[derive(Clone, Debug)]
 pub struct InvokeDynamic {
-    tag: u8,
     /**
      * **bootstrap_method_attr_index**\
      *  The value of the bootstrap_method_attr_index item must be a valid index
@@ -645,13 +620,8 @@ pub struct InvokeDynamic {
 }
 
 impl InvokeDynamic {
-    pub fn new(
-        tag: Tags,
-        bootstrap_method_attr_index: u16,
-        name_and_type_index: u16,
-    ) -> InvokeDynamic {
+    pub fn new(bootstrap_method_attr_index: u16, name_and_type_index: u16) -> InvokeDynamic {
         InvokeDynamic {
-            tag: tag as u8,
             bootstrap_method_attr_index,
             name_and_type_index,
         }
@@ -661,7 +631,6 @@ impl InvokeDynamic {
 #[derive(Clone, Debug)]
 /// [Module Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2423%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C117.8%2Cnull%5D)
 pub struct Module {
-    tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the
@@ -678,18 +647,12 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn new(tag: Tags, name_index: u16) -> Module {
-        Module {
-            tag: tag as u8,
-            name_index,
-        }
-    }
+    pub fn new(name_index: u16) -> Module { Module { name_index } }
 }
 
 #[derive(Clone, Debug)]
 /// [Package Constant](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A676%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C348.6%2Cnull%5D)
 pub struct Package {
-    tag: u8,
     /**
      * **name_index**\
      *  The value of the name_index item must be a valid index into the
@@ -706,89 +669,60 @@ pub struct Package {
 }
 
 impl Package {
-    pub fn new(tag: Tags, name_index: u16) -> Package {
-        Package {
-            tag: tag as u8,
-            name_index,
-        }
-    }
+    pub fn new(name_index: u16) -> Package { Package { name_index } }
 }
 
 pub fn read_constant_pool(
-    pool: &mut Vec<crate::class_file::ConstantPool>,
+    pool: &mut Vec<ConstantPool>,
     cursor: &mut Cursor<&[u8]>,
 ) -> Result<(), Box<dyn Error>> {
-    use crate::class_file::ConstantPool;
     for _ in 0..pool.capacity() {
         let tag = cursor.read_u8()?;
         pool.push(match Tags::from(tag) {
-            Tags::Utf8 => ConstantPool::Utf8(Utf8::new(Tags::from(tag), cursor)),
-            Tags::String => {
-                ConstantPool::String(String::new(Tags::from(tag), cursor.read_u16::<BE>()?))
-            }
-            Tags::Integer => {
-                ConstantPool::Integer(Integer::new(Tags::from(tag), cursor.read_u32::<BE>()?))
-            }
-            Tags::Float => {
-                ConstantPool::Float(Float::new(Tags::from(tag), cursor.read_u32::<BE>()?))
-            }
+            Tags::Utf8 => ConstantPool::Utf8(Utf8::new(cursor)),
+            Tags::String => ConstantPool::String(String::new(cursor.read_u16::<BE>()?)),
+            Tags::Integer => ConstantPool::Integer(Integer::new(cursor.read_u32::<BE>()?)),
+            Tags::Float => ConstantPool::Float(Float::new(cursor.read_u32::<BE>()?)),
             Tags::Long => ConstantPool::Long(Long::new(
-                Tags::from(tag),
                 cursor.read_u32::<BE>()?,
                 cursor.read_u32::<BE>()?,
             )),
             Tags::Double => ConstantPool::Double(Double::new(
-                Tags::from(tag),
                 cursor.read_u32::<BE>()?,
                 cursor.read_u32::<BE>()?,
             )),
-            Tags::Class => {
-                ConstantPool::Class(Class::new(Tags::from(tag), cursor.read_u16::<BE>()?))
-            }
+            Tags::Class => ConstantPool::Class(Class::new(cursor.read_u16::<BE>()?)),
             Tags::Fieldref => ConstantPool::Fieldref(Fieldref::new(
-                Tags::from(tag),
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
             Tags::Methodref => ConstantPool::Methodref(Methodref::new(
-                Tags::from(tag),
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
             Tags::InterfaceMethodref => ConstantPool::InterfaceMethodref(InterfaceMethodref::new(
-                Tags::from(tag),
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
             Tags::NameAndType => ConstantPool::NameAndType(NameAndType::new(
-                Tags::from(tag),
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
             Tags::MethodHandle => ConstantPool::MethodHandle(MethodHandle::new(
-                Tags::from(tag),
                 cursor.read_u8()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::MethodType => {
-                ConstantPool::MethodType(MethodType::new(Tags::from(tag), cursor.read_u16::<BE>()?))
-            }
+            Tags::MethodType => ConstantPool::MethodType(MethodType::new(cursor.read_u16::<BE>()?)),
             Tags::Dynamic => ConstantPool::Dynamic(Dynamic::new(
-                Tags::from(tag),
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
             Tags::InvokeDynamic => ConstantPool::InvokeDynamic(InvokeDynamic::new(
-                Tags::from(tag),
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::Module => {
-                ConstantPool::Module(Module::new(Tags::from(tag), cursor.read_u16::<BE>()?))
-            }
-            Tags::Package => {
-                ConstantPool::Package(Package::new(Tags::from(tag), cursor.read_u16::<BE>()?))
-            }
+            Tags::Module => ConstantPool::Module(Module::new(cursor.read_u16::<BE>()?)),
+            Tags::Package => ConstantPool::Package(Package::new(cursor.read_u16::<BE>()?)),
             _ => {
                 return Err(Box::new(LoadingError::new(
                     LoadingCause::InvalidConstantTag(tag),

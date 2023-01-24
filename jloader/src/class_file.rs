@@ -5,71 +5,11 @@ use std::error::Error;
 
 use crate::access_flags::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use crate::attributes;
+use crate::attributes::AttributeInfo;
+use crate::constants::ConstantPool;
 use crate::constants::{self, Utf8};
 use crate::descriptors::{FieldDescriptor, MethodDescriptor};
-use crate::errors::{
-    class_format_check::{FormatCause, FormatError},
-    class_loading::{LoadingCause, LoadingError},
-};
-
-/// [The Constant Pool](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2201%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C256%2Cnull%5D)
-#[derive(Clone, Debug)]
-pub enum ConstantPool {
-    Utf8(constants::Utf8),
-    Integer(constants::Integer),
-    Float(constants::Float),
-    Long(constants::Long),
-    Double(constants::Double),
-    Class(constants::Class),
-    String(constants::String),
-    Fieldref(constants::Fieldref),
-    Methodref(constants::Methodref),
-    InterfaceMethodref(constants::InterfaceMethodref),
-    NameAndType(constants::NameAndType),
-    MethodHandle(constants::MethodHandle),
-    MethodType(constants::MethodType),
-    Dynamic(constants::Dynamic),
-    InvokeDynamic(constants::InvokeDynamic),
-    Module(constants::Module),
-    Package(constants::Package),
-    Unknown,
-}
-
-/// [Attributes](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A1244%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
-#[derive(Clone, Debug)]
-pub enum AttributeInfo {
-    ConstantValue(attributes::ConstantValue),
-    Code(attributes::Code),
-    StackMapTable(attributes::StackMapTable),
-    Exceptions(attributes::Exceptions),
-    InnerClasses(attributes::InnerClasses),
-    EnclosingMethod(attributes::EnclosingMethod),
-    Synthetic(attributes::Synthetic),
-    Signature(attributes::Signature),
-    SourceFile(attributes::SourceFile),
-    SourceDebugExtension(attributes::SourceDebugExtension),
-    LineNumberTable(attributes::LineNumberTable),
-    LocalVariableTable(attributes::LocalVariableTable),
-    LocalVariableTypeTable(attributes::LocalVariableTypeTable),
-    Deprecated(attributes::Deprecated),
-    RuntimeVisibleAnnotations(attributes::RuntimeVisibleAnnotations),
-    RuntimeInvisibleAnnotations(attributes::RuntimeInvisibleAnnotations),
-    RuntimeVisibleParameterAnnotations(attributes::RuntimeVisibleParameterAnnotations),
-    RuntimeInvisibleParameterAnnotations(attributes::RuntimeInvisibleParameterAnnotations),
-    RuntimeVisibleTypeAnnotations(attributes::RuntimeVisibleTypeAnnotations),
-    RuntimeInvisibleTypeAnnotations(attributes::RuntimeInvisibleTypeAnnotations),
-    AnnotationDefault(attributes::AnnotationDefault),
-    BootstrapMethods(attributes::BootstrapMethods),
-    MethodParameters(attributes::MethodParameters),
-    Module(attributes::Module),
-    ModulePackages(attributes::ModulePackages),
-    ModuleMainClass(attributes::ModuleMainClass),
-    NestHost(attributes::NestHost),
-    NestMembers(attributes::NestMembers),
-    Record(attributes::Record),
-    PermittedSubclasses(attributes::PermittedSubclasses),
-    Unknown(String),
-}
+use crate::errors::class_format_check::{FormatCause, FormatError};
 
 /// [Fields](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A721%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 #[derive(Clone, Debug, Default)]
@@ -112,9 +52,9 @@ impl FieldInfo {
         if let ConstantPool::Utf8(desc) = &constant_pool[self.descriptor_index as usize] {
             let desc_option: Option<Vec<FieldDescriptor>> = Option::from(desc.to_owned());
             if let Some(descriptors) = desc_option {
-                output.push_str(&format!("\tDescriptor: {:?}\n", descriptors));
+                output.push_str(&format!("\tDescriptor: {descriptors:?}\n"));
             } else {
-                output.push_str(&format!("\tDescriptor: []\n"));
+                output.push_str("\tDescriptor: []\n");
             }
         }
         output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
@@ -189,9 +129,9 @@ impl MethodInfo {
         if let ConstantPool::Utf8(desc) = &constant_pool[self.descriptor_index as usize] {
             let desc_option: Option<Vec<MethodDescriptor>> = Option::from(desc.to_owned());
             if let Some(descriptors) = desc_option {
-                output.push_str(&format!("\tDescriptor: {:?}\n", descriptors));
+                output.push_str(&format!("\tDescriptor: {descriptors:?}\n"));
             } else {
-                output.push_str(&format!("\tDescriptor: []\n"));
+                output.push_str("\tDescriptor: []\n");
             }
         }
         output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
@@ -697,7 +637,7 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                 if let Some(descrip) = descriptor {
                     let name = String::from(name);
                     if name == "<init>" && !descrip.contains(&MethodDescriptor::VoidReturn) {
-                        println!("{:?}", descrip);
+                        println!("{descrip:?}");
                         return Err(FormatError::new(
                             FormatCause::InvalidDescriptor(String::from(desc)),
                             "Methodref descriptor did not contain Void",
@@ -755,7 +695,7 @@ fn check_format(class: ClassFile) -> Result<(), FormatError> {
                 let reference_kind_u8 = mh.reference_kind.clone() as u8;
                 match reference_kind_u8 {
                     1..=4 => {
-                        let ConstantPool::Fieldref(fr) = class.get_from_constant_pool(mh.reference_index)? else {
+                        let ConstantPool::Fieldref(_) = class.get_from_constant_pool(mh.reference_index)? else {
                             return Err(FormatError::new(
                                 FormatCause::InvalidIndex(mh.reference_index),
                                 "MethodHandle reference_index was not a Fieldref Constant"
