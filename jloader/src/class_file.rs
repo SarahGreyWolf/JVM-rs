@@ -10,6 +10,7 @@ use crate::constants::ConstantPool;
 use crate::constants::{self, Utf8};
 use crate::descriptors::{FieldDescriptor, MethodDescriptor};
 use crate::errors::class_format_check::{FormatCause, FormatError};
+use crate::errors::class_loading::LoadingError;
 
 /// [Fields](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A721%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 #[derive(Clone, Debug, Default)]
@@ -230,7 +231,7 @@ impl MethodInfo {
 }
 
 #[derive(Clone)]
-pub struct ClassFile {
+pub struct Class {
     /**
      * **magic**\
      *  The magic item supplies the magic number identifying the class file format;\
@@ -385,8 +386,8 @@ pub struct ClassFile {
  * appear.
 */
 
-impl ClassFile {
-    pub fn from_bytes(bytes: &[u8]) -> Result<ClassFile, Box<dyn Error>> {
+impl Class {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Class, Box<dyn Error>> {
         let mut cursor = Cursor::new(bytes);
         let magic = cursor.read_u32::<BE>()?;
         let minor_version = cursor.read_u16::<BE>()?;
@@ -460,7 +461,7 @@ impl ClassFile {
                 "class file has leftover bytes",
             )));
         }
-        let class = ClassFile {
+        let class = Class {
             magic,
             minor_version,
             major_version,
@@ -535,7 +536,7 @@ impl ClassFile {
 }
 
 /// [Format Checking](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2235%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C590%2Cnull%5D)
-fn check_format(class: ClassFile) -> Result<(), FormatError> {
+fn check_format(class: Class) -> Result<(), FormatError> {
     // • The first four bytes must contain the right magic number.
     if class.magic != 0xCAFEBABE {
         return Err(FormatError::new(

@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use jloader::class_file::ClassFile;
+use jloader::class_file::Class;
 use std::{
     error::Error,
     fs::{read_to_string, File},
@@ -9,13 +9,13 @@ use std::{
 
 const TEST_PATH: &str = "test_verified_output/";
 
-fn load_class(path: &str) -> Result<ClassFile, Box<dyn Error>> {
+fn load_class(path: &str) -> Result<Class, Box<dyn Error>> {
     let mut class_file: File = File::open(path).expect("Failed to open file");
     let mut contents = vec![00; class_file.metadata().unwrap().len() as usize];
     class_file
         .read_exact(&mut contents)
         .expect("Failed to read bytes");
-    ClassFile::from_bytes(&contents)
+    Class::from_bytes(&contents)
 }
 
 #[test]

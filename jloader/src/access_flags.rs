@@ -206,7 +206,7 @@ impl From<&MethodAccessFlags> for String {
 }
 
 #[repr(u16)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldAccessFlags {
     None = 0x0000,
     /// Declared public; may be accessed from outside its package.

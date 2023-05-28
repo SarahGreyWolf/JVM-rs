@@ -133,7 +133,7 @@ pub struct ConstantValue {
      *  represented by this attribute. The constant_pool entry must be of a type
      *  appropriate to the field, as specified in Table 4.7.2-A.
      */
-    pub(crate) constantvalue_index: u16,
+    pub constantvalue_index: u16,
 }
 
 impl ConstantValue {

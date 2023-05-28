@@ -56,7 +56,7 @@ pub mod class_format_check {
 
     impl Display for FormatError {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "Format Error: {}, {}", self.cause, self.msg)
+            write!(f, "Class Format Error: {}, {}", self.cause, self.msg)
         }
     }
 }
@@ -74,6 +74,7 @@ pub mod class_loading {
         InvalidTargetInfoValue(u8),
         InvalidTargetTypeValue(u8),
         InvalidTypePathKind(u8),
+        UnsupportedClassVersion(u16, u16),
     }
 
     impl Display for LoadingCause {
@@ -91,6 +92,9 @@ pub mod class_loading {
                 }
                 LoadingCause::InvalidTypePathKind(t) => {
                     write!(f, "InvalidTypePathKind: {t}")
+                }
+                LoadingCause::UnsupportedClassVersion(major, minor) => {
+                    write!(f, "UnsupportedClassVersion: {major}.{minor}")
                 }
             }
         }
