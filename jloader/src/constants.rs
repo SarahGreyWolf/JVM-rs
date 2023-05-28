@@ -2,7 +2,10 @@ use std::{error::Error, io::Cursor, str::from_utf8};
 
 use byteorder::{ReadBytesExt, BE};
 
-use crate::errors::class_loading::{LoadingCause, LoadingError};
+use crate::errors::{
+    class_format_check::{FormatCause, FormatError},
+    class_loading::{LoadingCause, LoadingError},
+};
 
 /// [The Constant Pool](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2201%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C256%2Cnull%5D)
 #[derive(Clone, Debug)]
@@ -288,6 +291,33 @@ pub struct Class {
 
 impl Class {
     pub fn new(index: u16) -> Class { Class { name_index: index } }
+
+    pub fn get_name(
+        &self,
+        constant_pool: &[ConstantPool],
+    ) -> Result<std::string::String, FormatError> {
+        if self.name_index as usize > constant_pool.len() {
+            return Err(FormatError::new(
+                FormatCause::InvalidIndex(self.name_index),
+                &format!(
+                    "string_index {} does not fit in constant_pool of length {}",
+                    self.name_index,
+                    constant_pool.len()
+                ),
+            ));
+        }
+        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
+            Ok(utf8.into())
+        } else {
+            Err(FormatError::new(
+                FormatCause::InvalidConstant(constant_pool[self.name_index as usize].clone()),
+                &format!(
+                    "The constant at {} is not a valid Utf8 constant",
+                    self.name_index
+                ),
+            ))
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -307,6 +337,33 @@ impl String {
     pub fn new(index: u16) -> String {
         String {
             string_index: index,
+        }
+    }
+
+    pub fn to_string(
+        &self,
+        constant_pool: &[ConstantPool],
+    ) -> Result<std::string::String, FormatError> {
+        if self.string_index as usize > constant_pool.len() {
+            return Err(FormatError::new(
+                FormatCause::InvalidIndex(self.string_index),
+                &format!(
+                    "string_index {} does not fit in constant_pool of length {}",
+                    self.string_index,
+                    constant_pool.len()
+                ),
+            ));
+        }
+        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.string_index as usize] {
+            Ok(utf8.into())
+        } else {
+            Err(FormatError::new(
+                FormatCause::InvalidConstant(constant_pool[self.string_index as usize].clone()),
+                &format!(
+                    "The constant at {} is not a valid Utf8 constant",
+                    self.string_index
+                ),
+            ))
         }
     }
 }
@@ -445,6 +502,60 @@ impl NameAndType {
             descriptor_index,
         }
     }
+
+    pub fn get_name(
+        &self,
+        constant_pool: &[ConstantPool],
+    ) -> Result<std::string::String, FormatError> {
+        if self.name_index as usize > constant_pool.len() {
+            return Err(FormatError::new(
+                FormatCause::InvalidIndex(self.name_index),
+                &format!(
+                    "string_index {} does not fit in constant_pool of length {}",
+                    self.name_index,
+                    constant_pool.len()
+                ),
+            ));
+        }
+        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
+            Ok(utf8.into())
+        } else {
+            Err(FormatError::new(
+                FormatCause::InvalidConstant(constant_pool[self.name_index as usize].clone()),
+                &format!(
+                    "The constant at {} is not a valid Utf8 constant",
+                    self.name_index
+                ),
+            ))
+        }
+    }
+
+    pub fn get_descriptor(
+        &self,
+        constant_pool: &[ConstantPool],
+    ) -> Result<std::string::String, FormatError> {
+        if self.descriptor_index as usize > constant_pool.len() {
+            return Err(FormatError::new(
+                FormatCause::InvalidIndex(self.descriptor_index),
+                &format!(
+                    "string_index {} does not fit in constant_pool of length {}",
+                    self.descriptor_index,
+                    constant_pool.len()
+                ),
+            ));
+        }
+        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.descriptor_index as usize] {
+            Ok(utf8.into())
+        } else {
+            Err(FormatError::new(
+                FormatCause::InvalidConstant(constant_pool[self.descriptor_index as usize].clone()),
+                &format!(
+                    "The constant at {} is not a valid Utf8 constant",
+                    self.descriptor_index
+                ),
+            ))
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -462,6 +573,32 @@ pub struct MethodType {
 
 impl MethodType {
     pub fn new(descriptor_index: u16) -> MethodType { MethodType { descriptor_index } }
+    pub fn get_descriptor(
+        &self,
+        constant_pool: &[ConstantPool],
+    ) -> Result<std::string::String, FormatError> {
+        if self.descriptor_index as usize > constant_pool.len() {
+            return Err(FormatError::new(
+                FormatCause::InvalidIndex(self.descriptor_index),
+                &format!(
+                    "string_index {} does not fit in constant_pool of length {}",
+                    self.descriptor_index,
+                    constant_pool.len()
+                ),
+            ));
+        }
+        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.descriptor_index as usize] {
+            Ok(utf8.into())
+        } else {
+            Err(FormatError::new(
+                FormatCause::InvalidConstant(constant_pool[self.descriptor_index as usize].clone()),
+                &format!(
+                    "The constant at {} is not a valid Utf8 constant",
+                    self.descriptor_index
+                ),
+            ))
+        }
+    }
 }
 
 #[repr(u8)]
@@ -648,6 +785,33 @@ pub struct Module {
 
 impl Module {
     pub fn new(name_index: u16) -> Module { Module { name_index } }
+
+    pub fn get_name(
+        &self,
+        constant_pool: &[ConstantPool],
+    ) -> Result<std::string::String, FormatError> {
+        if self.name_index as usize > constant_pool.len() {
+            return Err(FormatError::new(
+                FormatCause::InvalidIndex(self.name_index),
+                &format!(
+                    "string_index {} does not fit in constant_pool of length {}",
+                    self.name_index,
+                    constant_pool.len()
+                ),
+            ));
+        }
+        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
+            Ok(utf8.into())
+        } else {
+            Err(FormatError::new(
+                FormatCause::InvalidConstant(constant_pool[self.name_index as usize].clone()),
+                &format!(
+                    "The constant at {} is not a valid Utf8 constant",
+                    self.name_index
+                ),
+            ))
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -670,6 +834,33 @@ pub struct Package {
 
 impl Package {
     pub fn new(name_index: u16) -> Package { Package { name_index } }
+
+    pub fn get_name(
+        &self,
+        constant_pool: &[ConstantPool],
+    ) -> Result<std::string::String, FormatError> {
+        if self.name_index as usize > constant_pool.len() {
+            return Err(FormatError::new(
+                FormatCause::InvalidIndex(self.name_index),
+                &format!(
+                    "string_index {} does not fit in constant_pool of length {}",
+                    self.name_index,
+                    constant_pool.len()
+                ),
+            ));
+        }
+        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
+            Ok(utf8.into())
+        } else {
+            Err(FormatError::new(
+                FormatCause::InvalidConstant(constant_pool[self.name_index as usize].clone()),
+                &format!(
+                    "The constant at {} is not a valid Utf8 constant",
+                    self.name_index
+                ),
+            ))
+        }
+    }
 }
 
 pub fn read_constant_pool(
