@@ -8,11 +8,11 @@ Currently Java 17
 ## Currently Implemented
 - [ ] Class Loading
     - [x] Constant Pool Constants
-    - [ ] Descriptor Formatting
+    - [x] Descriptor Formatting
     - [x] Methods
     - [x] Fields
     - [x] Attributes
-    - [ ] Format Checking
+    - [x] Format Checking
     - [ ] Verification
 
 # Support Development
