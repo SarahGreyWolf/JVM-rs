@@ -14,6 +14,7 @@ Currently Java 17
     - [x] Attributes
     - [x] Format Checking
     - [ ] Verification
+- [ ] javap
 
 # Support Development
 You can support the development at either of the following places:

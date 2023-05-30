@@ -20,5 +20,4 @@ byteorder = "1.4.3"
 jloader = {path = "./jloader"}
 
 [workspace]
-members = ["jloader"]
-
+members = ["jloader", "javap"]

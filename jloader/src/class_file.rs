@@ -10,7 +10,6 @@ use crate::constants::ConstantPool;
 use crate::constants::{self, Utf8};
 use crate::descriptors::{FieldDescriptor, MethodDescriptor};
 use crate::errors::class_format_check::{FormatCause, FormatError};
-use crate::errors::class_loading::LoadingError;
 
 /// [Fields](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A721%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 #[derive(Clone, Debug, Default)]
