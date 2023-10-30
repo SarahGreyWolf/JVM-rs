@@ -1,6 +1,9 @@
 /target
 /.vs
 /test_verified_output
+/.vscode
+/.idea
+/.husky
 
 *.class
 *.java

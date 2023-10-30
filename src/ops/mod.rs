@@ -1,6 +1,6 @@
 pub mod mnemonics;
 
-use std::{io::Cursor, ops::Deref};
+use std::io::Cursor;
 
 use byteorder::ReadBytesExt;
 use jloader::constants::{self, ConstantPool};
@@ -13,19 +13,6 @@ pub enum OperandType {
     Offset(u8),
     Immediate(u8),
 }
-
-// impl Deref for OperandType {
-//     type Target = u8;
-
-//     fn deref(&self) -> &Self::Target {
-//         match self {
-//             OperandType::PoolIndex(byte) => byte,
-//             OperandType::VarIndex(byte) => byte,
-//             OperandType::Offset(byte) => byte,
-//             OperandType::Immediate(byte) => byte,
-//         }
-//     }
-// }
 
 #[derive(Debug)]
 pub struct Instruction {
