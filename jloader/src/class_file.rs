@@ -71,13 +71,13 @@ impl FieldInfo {
             Option::from(desc)
         } else {
             unreachable!(
-                "Could not get descriptor for method at index {}",
+                "Could not get descriptor for field at index {}",
                 self.descriptor_index
             );
         };
         let Some(ref descriptors): Option<Vec<FieldDescriptor>> = descriptors else {
             unreachable!(
-                "Could not get descriptor for method at index {}",
+                "Could not get descriptor for field at index {}",
                 self.descriptor_index
             );
         };
@@ -140,91 +140,59 @@ impl MethodInfo {
     }
 
     pub fn get_params(&self, constant_pool: &[ConstantPool]) -> Vec<String> {
-        let descriptor: String = if let ConstantPool::Utf8(desc) =
+        let descriptors = if let ConstantPool::Utf8(desc) =
             constant_pool[self.descriptor_index as usize].clone()
         {
-            String::from(&desc)
+            Option::from(desc)
         } else {
             unreachable!(
                 "Could not get descriptor for method at index {}",
                 self.descriptor_index
             );
         };
-        let mut params = descriptor.split(')');
-        let mut params = params
-            .next()
-            .expect("No parameters could be found")
-            .to_string();
-        params.remove(0);
-        let params: Vec<String> = params
-            .split(';')
-            .map(|param| {
-                if param == "I" {
-                    "int".into()
-                } else {
-                    param.to_string()
-                }
-            })
-            .collect();
-        let mut new_params = vec![];
-        for param in params {
-            let mut split: Vec<String> = param.split('L').map(|dumb| dumb.to_string()).collect();
-            if split.len() > 1 {
-                new_params.append(&mut split);
-            } else {
-                new_params.push(param.to_string());
+        let Some(descriptor): Option<Vec<MethodDescriptor>> = descriptors else {
+            unreachable!(
+                "Could not get descriptor for method at index {}",
+                self.descriptor_index
+            );
+        };
+        let mut output = vec![];
+        for values in descriptor {
+            if let MethodDescriptor::ParameterDescriptor(param) = values {
+                output.push(String::from(param));
             }
         }
-        for index in 0..new_params.len() - 1 {
-            if new_params[index] == "[" {
-                new_params.remove(index);
-            }
-            let mut param =
-                new_params[index].trim_matches(|c| c == ')' || c == ']' || c == ';' || c == 'L');
-            param = param.trim_start_matches('L');
-            if param == "I" {
-                new_params[index] = "int".into();
-            }
-        }
-        new_params
+        output
     }
 
     pub fn get_return(&self, constant_pool: &[ConstantPool]) -> String {
-        let descriptor: String = if let ConstantPool::Utf8(desc) =
+        let descriptors = if let ConstantPool::Utf8(desc) =
             constant_pool[self.descriptor_index as usize].clone()
         {
-            String::from(&desc)
+            Option::from(desc)
         } else {
             unreachable!(
                 "Could not get descriptor for method at index {}",
                 self.descriptor_index
             );
         };
-        let mut return_type = descriptor.split(')');
-        return_type.next().unwrap_or_else(|| {
-            panic!(
-                "No return type exists for {:?}",
-                constant_pool[self.name_index as usize]
-            )
-        });
-        let mut r#type = return_type
-            .next()
-            .unwrap_or_else(|| {
-                panic!(
-                    "No return type exists for {:?}",
-                    constant_pool[self.name_index as usize]
-                )
-            })
-            .to_string();
-        if r#type == "V" {
-            r#type = "void".into()
+        let Some(descriptor): Option<Vec<MethodDescriptor>> = descriptors else {
+            unreachable!(
+                "Could not get descriptor for method at index {}",
+                self.descriptor_index
+            );
+        };
+        for values in descriptor {
+            match values {
+                MethodDescriptor::ReturnDescriptor(ret) => return String::from(ret),
+                MethodDescriptor::VoidReturn => return String::from("void"),
+                _ => continue,
+            }
         }
-        if r#type == "I" {
-            r#type = "int".into()
-        }
-        r#type = r#type.trim_matches(';').to_string();
-        r#type = r#type.trim_matches('L').to_string();
-        r#type
+        unreachable!(
+            "Failed to find a return type for descriptor {}",
+            self.descriptor_index
+        );
     }
 }
 

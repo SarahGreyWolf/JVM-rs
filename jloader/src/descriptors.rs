@@ -6,7 +6,7 @@ pub enum FieldDescriptor {
     BaseType(String),
     // Object Type with ClassName
     ObjectType(String),
-    ArrayType,
+    ArrayType(String),
 }
 
 impl From<FieldDescriptor> for String {
@@ -14,7 +14,7 @@ impl From<FieldDescriptor> for String {
         match desc {
             FieldDescriptor::BaseType(r#type) => r#type,
             FieldDescriptor::ObjectType(object) => object,
-            FieldDescriptor::ArrayType => "[]".into(),
+            FieldDescriptor::ArrayType(object) => format!("{object}[]"),
         }
     }
 }
@@ -24,12 +24,19 @@ impl From<Utf8> for Option<Vec<FieldDescriptor>> {
         let mut descriptors = vec![];
         let mut peekable = value.bytes.iter().peekable();
         let mut in_object = false;
+        let mut is_array = false;
+        let mut array = String::new();
         let mut name = String::new();
         while let Some(c) = peekable.peek() {
             let c = **c;
             if c == b';' {
                 in_object = false;
-                descriptors.push(FieldDescriptor::ObjectType(name));
+                if is_array {
+                    descriptors.push(FieldDescriptor::ArrayType(name));
+                    is_array = false;
+                } else {
+                    descriptors.push(FieldDescriptor::ObjectType(name));
+                }
                 name = String::new();
                 peekable.next();
                 continue;
@@ -40,16 +47,72 @@ impl From<Utf8> for Option<Vec<FieldDescriptor>> {
                 continue;
             }
             match c {
-                b'[' => descriptors.push(FieldDescriptor::ArrayType),
+                b'[' => is_array = true,
                 b'L' => in_object = true,
-                b'B' => descriptors.push(FieldDescriptor::BaseType("byte".into())),
-                b'C' => descriptors.push(FieldDescriptor::BaseType("char".into())),
-                b'D' => descriptors.push(FieldDescriptor::BaseType("double".into())),
-                b'F' => descriptors.push(FieldDescriptor::BaseType("float".into())),
-                b'I' => descriptors.push(FieldDescriptor::BaseType("int".into())),
-                b'J' => descriptors.push(FieldDescriptor::BaseType("long".into())),
-                b'S' => descriptors.push(FieldDescriptor::BaseType("short".into())),
-                b'Z' => descriptors.push(FieldDescriptor::BaseType("boolean".into())),
+                b'B' => {
+                    if is_array {
+                        is_array = false;
+                        descriptors.push(FieldDescriptor::ArrayType("byte".into()))
+                    } else {
+                        descriptors.push(FieldDescriptor::BaseType("byte".into()))
+                    }
+                }
+                b'C' => {
+                    if is_array {
+                        is_array = false;
+                        descriptors.push(FieldDescriptor::ArrayType("char".into()))
+                    } else {
+                        descriptors.push(FieldDescriptor::BaseType("char".into()))
+                    }
+                }
+                b'D' => {
+                    if is_array {
+                        is_array = false;
+                        descriptors.push(FieldDescriptor::ArrayType("double".into()))
+                    } else {
+                        descriptors.push(FieldDescriptor::BaseType("double".into()))
+                    }
+                }
+                b'F' => {
+                    if is_array {
+                        is_array = false;
+                        descriptors.push(FieldDescriptor::ArrayType("float".into()))
+                    } else {
+                        descriptors.push(FieldDescriptor::BaseType("float".into()))
+                    }
+                }
+                b'I' => {
+                    if is_array {
+                        is_array = false;
+                        descriptors.push(FieldDescriptor::ArrayType("int".into()))
+                    } else {
+                        descriptors.push(FieldDescriptor::BaseType("int".into()))
+                    }
+                }
+                b'J' => {
+                    if is_array {
+                        is_array = false;
+                        descriptors.push(FieldDescriptor::ArrayType("long".into()))
+                    } else {
+                        descriptors.push(FieldDescriptor::BaseType("long".into()))
+                    }
+                }
+                b'S' => {
+                    if is_array {
+                        is_array = false;
+                        descriptors.push(FieldDescriptor::ArrayType("short".into()))
+                    } else {
+                        descriptors.push(FieldDescriptor::BaseType("short".into()))
+                    }
+                }
+                b'Z' => {
+                    if is_array {
+                        is_array = false;
+                        descriptors.push(FieldDescriptor::ArrayType("boolean".into()))
+                    } else {
+                        descriptors.push(FieldDescriptor::BaseType("boolean".into()))
+                    }
+                }
                 _ => return None,
             }
             peekable.next();

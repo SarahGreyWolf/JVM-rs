@@ -88,7 +88,6 @@ fn output_class(
     class: class_file::Class,
     args: &Args,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // FIXME: Bundle this up into a buffer to then push to stdout
     let mut output_buffer = vec![];
 
     const SPACING: &str = "    ";
@@ -167,15 +166,14 @@ fn output_class(
             let type_descriptors = field.get_type(&class.constant_pool);
             let mut _type = String::new();
             for t in type_descriptors.iter() {
-                if *t != FieldDescriptor::ArrayType {
-                    _type = String::from(t.clone());
-                } else {
+                if let FieldDescriptor::ArrayType(_) = *t {
                     continue;
                 }
+                _type = String::from(t.clone());
             }
             let field_def = if !args.constants {
-                if type_descriptors[0] == FieldDescriptor::ArrayType {
-                    format!("{access_flags} {_type}[] {field_name};")
+                if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
+                    format!("{access_flags} {name} {field_name};")
                 } else {
                     format!("{access_flags} {_type} {field_name};")
                 }
@@ -192,9 +190,9 @@ fn output_class(
                             if let ConstantPool::Utf8(ref s) =
                                 class.constant_pool[s.string_index as usize]
                             {
-                                if type_descriptors[0] == FieldDescriptor::ArrayType {
+                                if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
                                     format!(
-                                        "{access_flags} {_type}[] {field_name} = \"{}\";",
+                                        "{access_flags} {name} {field_name} = \"{}\";",
                                         String::from(s)
                                     )
                                 } else {
@@ -223,8 +221,8 @@ fn output_class(
                         ConstantPool::Unknown => todo!(),
                     }
                 } else {
-                    if type_descriptors[0] == FieldDescriptor::ArrayType {
-                        format!("{access_flags} {_type}[] {field_name};")
+                    if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
+                        format!("{access_flags} {name} {field_name};")
                     } else {
                         format!("{access_flags} {_type} {field_name};")
                     }
@@ -287,6 +285,7 @@ fn output_class(
         if method_name == "<clinit>" {
             writeln!(output_buffer, "{SPACING}{access_flags} {{}};")?;
         } else {
+            method.get_params(&class.constant_pool);
             let params = method
                 .get_params(&class.constant_pool)
                 .iter()
