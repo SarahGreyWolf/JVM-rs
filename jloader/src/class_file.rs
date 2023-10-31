@@ -65,18 +65,17 @@ impl FieldInfo {
     }
 
     pub fn get_type(&self, constant_pool: &[ConstantPool]) -> Vec<FieldDescriptor> {
-        let Some(ref descriptors): Option<Vec<FieldDescriptor>> = (
-            if let ConstantPool::Utf8(desc) =
+        let descriptors = if let ConstantPool::Utf8(desc) =
             constant_pool[self.descriptor_index as usize].clone()
-            {
-                Option::from(desc)
-            } else {
-                unreachable!(
-                    "Could not get descriptor for method at index {}",
-                    self.descriptor_index
-                );
-            }
-        ) else {
+        {
+            Option::from(desc)
+        } else {
+            unreachable!(
+                "Could not get descriptor for method at index {}",
+                self.descriptor_index
+            );
+        };
+        let Some(ref descriptors): Option<Vec<FieldDescriptor>> = descriptors else {
             unreachable!(
                 "Could not get descriptor for method at index {}",
                 self.descriptor_index
