@@ -1,4 +1,5 @@
 use byteorder::ReadBytesExt;
+use jvm_rs::ops::{mnemonics::Mnemonic, Instruction, OperandType};
 use std::{
     fs::File,
     io::{Cursor, Read, Write},
@@ -308,7 +309,111 @@ fn output_class(
             method_def = method_def.trim().to_string();
             writeln!(output_buffer, "{SPACING}{method_def}")?;
         }
+        if args.disassemble {
+            disassemble(&method, &class.constant_pool, &mut output_buffer)?;
+        }
     }
     writeln!(output_buffer, "}}")?;
     Ok(output_buffer)
+}
+
+fn disassemble(
+    method: &MethodInfo,
+    constant_pool: &[ConstantPool],
+    output_buffer: &mut Vec<u8>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for attrib in &method.attributes {
+        if let AttributeInfo::Code(code) = attrib {
+            let bytes = code.code.clone();
+            let mut cursor = Cursor::new(bytes.as_slice());
+            while let Ok(byte) = cursor.read_u8() {
+                let mnemonic = Mnemonic::from(byte);
+                let instruction = Instruction::from_mnemonic_cursor(&mnemonic, &mut cursor)?;
+                if instruction.get_const_operands().is_empty() {
+                    writeln!(
+                        output_buffer,
+                        "\t{}: {}",
+                        cursor.position(),
+                        String::from(mnemonic)
+                    )?;
+                    continue;
+                }
+                let mut result_pool_index: i32 = -1;
+                let mut result_var_index: i32 = -1;
+                let mut result_imm: Vec<u8> = vec![];
+                let mut result_offset: i32 = -1;
+
+                for op in instruction.get_const_operands() {
+                    if let OperandType::PoolIndex(index) = op {
+                        if result_pool_index == -1 {
+                            if instruction.get_const_operands().len() == 1 {
+                                result_pool_index = *index as i32;
+                            } else {
+                                result_pool_index = (*index as i32) << 8;
+                            }
+                        } else {
+                            result_pool_index |= *index as i32;
+                        }
+                    }
+                    if let OperandType::Offset(offset) = op {
+                        if result_offset == -1 {
+                            if instruction.get_const_operands().len() == 1 {
+                                result_offset = *offset as i32;
+                            } else {
+                                result_offset = (*offset as i32) << 8;
+                            }
+                        } else {
+                            result_offset = (result_offset as u32 | *offset as u32) as i32;
+                        }
+                    }
+                    if let OperandType::VarIndex(index) = op {
+                        if result_var_index == -1 {
+                            if instruction.get_const_operands().len() == 1 {
+                                result_var_index = *index as i32;
+                            } else {
+                                result_var_index = (*index as i32) << 8;
+                            }
+                        } else {
+                            result_var_index |= *index as i32;
+                        }
+                    }
+                    // This does not work for immediate values that need to be
+                    // combined into anything bigger than a u8
+                    if let OperandType::Immediate(imm) = op {
+                        result_imm.push(*imm);
+                    }
+                }
+                if result_pool_index == -1
+                    && result_var_index == -1
+                    && result_offset == -1
+                    && result_imm.is_empty()
+                {
+                    writeln!(output_buffer, "\t{:?}", instruction)?;
+                    continue;
+                }
+                write!(
+                    output_buffer,
+                    "\t{}: {}",
+                    cursor.position() - instruction.get_const_operands().len() as u64,
+                    String::from(mnemonic)
+                )?;
+                if result_pool_index > -1 {
+                    write!(output_buffer, " #{result_pool_index}",)?;
+                }
+                if result_var_index > -1 {
+                    write!(output_buffer, " {result_var_index}",)?;
+                }
+                if result_offset > -1 {
+                    write!(output_buffer, " {result_offset}",)?;
+                }
+                if !result_imm.is_empty() {
+                    for imm in result_imm {
+                        write!(output_buffer, " {imm}")?;
+                    }
+                }
+                write!(output_buffer, "\n")?;
+            }
+        }
+    }
+    Ok(())
 }
