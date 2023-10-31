@@ -20,6 +20,7 @@ use jloader::constants::ConstantPool;
 mod data_types;
 
 mod ops;
+mod vm;
 
 // FIXME: Remove Later
 mod temp_run;
