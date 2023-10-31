@@ -278,7 +278,7 @@ impl Code {
             }
             if !has_stackmap {
                 attributes.push(AttributeInfo::StackMapTable(StackMapTable::implicit(
-                    constant_pool.len() as u16,
+                    constant_pool.len() as u16 - 1,
                 )));
                 attributes_count += 1;
             }
@@ -3007,7 +3007,7 @@ impl NestMembers {
         for _ in 0..number_of_classes {
             classes.push(cursor.read_u16::<BE>()?);
         }
-        assert!(classes.len() == number_of_classes as usize);
+        assert_eq!(classes.len(), number_of_classes as usize);
         Ok(NestMembers {
             attribute_name_index,
             attribute_length,
