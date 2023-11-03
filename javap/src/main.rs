@@ -137,7 +137,7 @@ fn output_class(
         if args.public && (!args.protected && !args.private) {
             if field.access_flags.contains(&FieldAccessFlags::AccProtected)
                 || field.access_flags.contains(&FieldAccessFlags::AccPrivate)
-                || is_secret_private
+                || (is_secret_private && !args.package)
             {
                 continue;
             }
@@ -147,90 +147,93 @@ fn output_class(
                 continue;
             }
         }
-
-        for attrib in field.clone().attributes {
-            let access_flags: String = field
-                .access_flags
-                .iter()
-                .map(String::from)
-                .collect::<Vec<String>>()
-                .join(" ")
-                .trim()
-                .to_string();
-            let field_name = if let ConstantPool::Utf8(field_name) =
-                &class.constant_pool[field.name_index as usize]
-            {
-                String::from(field_name)
-            } else {
-                unreachable!("Could not get field name from index {}", field.name_index);
-            };
-            let type_descriptors = field.get_type(&class.constant_pool);
-            let mut _type = String::new();
-            for t in type_descriptors.iter() {
-                if let FieldDescriptor::ArrayType(_) = *t {
-                    continue;
-                }
-                _type = String::from(t.clone());
+        let field_name = if let ConstantPool::Utf8(field_name) =
+            &class.constant_pool[field.name_index as usize]
+        {
+            String::from(field_name)
+        } else {
+            unreachable!("Could not get field name from index {}", field.name_index);
+        };
+        let access_flags: String = field
+            .access_flags
+            .iter()
+            .map(String::from)
+            .collect::<Vec<String>>()
+            .join(" ")
+            .trim()
+            .to_string();
+        let type_descriptors = field.get_type(&class.constant_pool);
+        let mut _type = String::new();
+        for t in type_descriptors.iter() {
+            if let FieldDescriptor::ArrayType(_) = *t {
+                continue;
             }
-            let field_def = if !args.constants {
+            _type = String::from(t.clone());
+        }
+        if field.attributes_count == 0 || !args.constants {
+            let field_def = if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
+                format!("{access_flags} {name} {field_name};")
+            } else {
+                format!("{access_flags} {_type} {field_name};")
+            };
+            writeln!(output_buffer, "\t{field_def}")?;
+            continue;
+        }
+        for attrib in field.clone().attributes {
+            let field_def = if let AttributeInfo::ConstantValue(c) = attrib {
+                match class.constant_pool[c.constantvalue_index as usize] {
+                    ConstantPool::Utf8(_) => todo!(),
+                    ConstantPool::Integer(_) => todo!(),
+                    ConstantPool::Float(_) => todo!(),
+                    ConstantPool::Long(_) => todo!(),
+                    ConstantPool::Double(_) => todo!(),
+                    ConstantPool::Class(_) => todo!(),
+                    ConstantPool::String(ref s) => {
+                        if let ConstantPool::Utf8(ref s) =
+                            class.constant_pool[s.string_index as usize]
+                        {
+                            if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
+                                format!(
+                                    "{access_flags} {name} {field_name} = \"{}\";",
+                                    String::from(s)
+                                )
+                            } else {
+                                format!(
+                                    "{access_flags} {_type} {field_name} = \"{}\";",
+                                    String::from(s)
+                                )
+                            }
+                        } else {
+                            unreachable!(
+                                "ConstantPool String index {} did not point to a utf8",
+                                s.string_index
+                            );
+                        }
+                    }
+                    ConstantPool::Fieldref(_) => todo!(),
+                    ConstantPool::Methodref(_) => todo!(),
+                    ConstantPool::InterfaceMethodref(_) => todo!(),
+                    ConstantPool::NameAndType(_) => todo!(),
+                    ConstantPool::MethodHandle(_) => todo!(),
+                    ConstantPool::MethodType(_) => todo!(),
+                    ConstantPool::Dynamic(_) => todo!(),
+                    ConstantPool::InvokeDynamic(_) => todo!(),
+                    ConstantPool::Module(_) => todo!(),
+                    ConstantPool::Package(_) => todo!(),
+                    ConstantPool::Unknown => todo!(),
+                }
+            } else {
                 if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
                     format!("{access_flags} {name} {field_name};")
                 } else {
                     format!("{access_flags} {_type} {field_name};")
                 }
-            } else {
-                if let AttributeInfo::ConstantValue(c) = attrib {
-                    match class.constant_pool[c.constantvalue_index as usize] {
-                        ConstantPool::Utf8(_) => todo!(),
-                        ConstantPool::Integer(_) => todo!(),
-                        ConstantPool::Float(_) => todo!(),
-                        ConstantPool::Long(_) => todo!(),
-                        ConstantPool::Double(_) => todo!(),
-                        ConstantPool::Class(_) => todo!(),
-                        ConstantPool::String(ref s) => {
-                            if let ConstantPool::Utf8(ref s) =
-                                class.constant_pool[s.string_index as usize]
-                            {
-                                if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
-                                    format!(
-                                        "{access_flags} {name} {field_name} = \"{}\";",
-                                        String::from(s)
-                                    )
-                                } else {
-                                    format!(
-                                        "{access_flags} {_type} {field_name} = \"{}\";",
-                                        String::from(s)
-                                    )
-                                }
-                            } else {
-                                unreachable!(
-                                    "ConstantPool String index {} did not point to a utf8",
-                                    s.string_index
-                                );
-                            }
-                        }
-                        ConstantPool::Fieldref(_) => todo!(),
-                        ConstantPool::Methodref(_) => todo!(),
-                        ConstantPool::InterfaceMethodref(_) => todo!(),
-                        ConstantPool::NameAndType(_) => todo!(),
-                        ConstantPool::MethodHandle(_) => todo!(),
-                        ConstantPool::MethodType(_) => todo!(),
-                        ConstantPool::Dynamic(_) => todo!(),
-                        ConstantPool::InvokeDynamic(_) => todo!(),
-                        ConstantPool::Module(_) => todo!(),
-                        ConstantPool::Package(_) => todo!(),
-                        ConstantPool::Unknown => todo!(),
-                    }
-                } else {
-                    if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
-                        format!("{access_flags} {name} {field_name};")
-                    } else {
-                        format!("{access_flags} {_type} {field_name};")
-                    }
-                }
             };
-            writeln!(output_buffer, "{SPACING}{field_def}")?;
+            writeln!(output_buffer, "\t{field_def}")?;
         }
+    }
+    if class.field_count > 0 {
+        write!(output_buffer, "\n")?;
     }
     for method in &class.methods {
         let mut is_secret_private = false;
@@ -284,7 +287,7 @@ fn output_class(
             .trim()
             .to_string();
         if method_name == "<clinit>" {
-            writeln!(output_buffer, "{SPACING}{access_flags} {{}};")?;
+            writeln!(output_buffer, "\t{access_flags} {{}};")?;
         } else {
             method.get_params(&class.constant_pool);
             let params = method
@@ -307,7 +310,7 @@ fn output_class(
                 )
             };
             method_def = method_def.trim().to_string();
-            writeln!(output_buffer, "{SPACING}{method_def}")?;
+            writeln!(output_buffer, "\t {method_def}")?;
         }
         if args.disassemble {
             disassemble(&method, &class.constant_pool, &mut output_buffer)?;
@@ -332,7 +335,7 @@ fn disassemble(
                 if instruction.get_const_operands().is_empty() {
                     writeln!(
                         output_buffer,
-                        "\t{}: {}",
+                        "\t\t{}: {}",
                         cursor.position(),
                         String::from(mnemonic)
                     )?;
@@ -388,12 +391,12 @@ fn disassemble(
                     && result_offset == -1
                     && result_imm.is_empty()
                 {
-                    writeln!(output_buffer, "\t{:?}", instruction)?;
+                    writeln!(output_buffer, "\t\t{:?}", instruction)?;
                     continue;
                 }
                 write!(
                     output_buffer,
-                    "\t{}: {}",
+                    "\t\t{}: {}",
                     cursor.position() - instruction.get_const_operands().len() as u64,
                     String::from(mnemonic)
                 )?;
