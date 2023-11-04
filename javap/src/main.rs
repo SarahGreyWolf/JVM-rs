@@ -91,7 +91,6 @@ fn output_class(
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let mut output_buffer = vec![];
 
-    const SPACING: &str = "    ";
     for attributes in &class.attributes {
         if let AttributeInfo::SourceFile(sf) = attributes {
             if let ConstantPool::Utf8(title) = &class.constant_pool[sf.sourcefile_index as usize] {
@@ -326,6 +325,18 @@ fn disassemble(
     output_buffer: &mut Vec<u8>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     for attrib in &method.attributes {
+        let mut longest_mnemonic: usize = 0;
+        if let AttributeInfo::Code(code) = attrib {
+            let bytes = code.code.clone();
+            let mut cursor = Cursor::new(bytes.as_slice());
+            while let Ok(byte) = cursor.read_u8() {
+                let mnemonic = Mnemonic::from(byte);
+                let size = String::from(mnemonic).len();
+                if size > longest_mnemonic {
+                    longest_mnemonic = size;
+                }
+            }
+        }
         if let AttributeInfo::Code(code) = attrib {
             let bytes = code.code.clone();
             let mut cursor = Cursor::new(bytes.as_slice());
@@ -396,12 +407,30 @@ fn disassemble(
                 }
                 write!(
                     output_buffer,
-                    "\t\t{}: {}",
+                    "\t\t{}: {:width$}",
                     cursor.position() - instruction.get_const_operands().len() as u64,
-                    String::from(mnemonic)
+                    String::from(mnemonic),
+                    width = longest_mnemonic
                 )?;
                 if result_pool_index > -1 {
-                    write!(output_buffer, " #{result_pool_index}",)?;
+                    write!(output_buffer, " #{result_pool_index}\t\t\t",)?;
+                    let constant = &constant_pool[result_pool_index as usize];
+                    if get_data_from_ref(constant_pool, constant, output_buffer)? == false {
+                        match constant {
+                            ConstantPool::String(string) => {
+                                write!(output_buffer, "// String ")?;
+                                if let ConstantPool::Utf8(string) =
+                                    &constant_pool[string.string_index as usize]
+                                {
+                                    let string = String::from(string);
+                                    write!(output_buffer, "{string}")?;
+                                }
+                            }
+                            _ => {
+                                dbg!(constant);
+                            }
+                        }
+                    }
                 }
                 if result_var_index > -1 {
                     write!(output_buffer, " {result_var_index}",)?;
@@ -419,4 +448,56 @@ fn disassemble(
         }
     }
     Ok(())
+}
+
+fn get_data_from_ref(
+    constant_pool: &[ConstantPool],
+    r#type: &ConstantPool,
+    output_buffer: &mut Vec<u8>,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut affected = false;
+    let mut class_index = 0;
+    let mut name_type_index = 0;
+    if let ConstantPool::Methodref(meth_ref) = r#type {
+        class_index = meth_ref.class_index;
+        name_type_index = meth_ref.name_and_type_index;
+        write!(output_buffer, "// Method ")?;
+        affected = true;
+    }
+    if let ConstantPool::Fieldref(field_ref) = r#type {
+        class_index = field_ref.class_index;
+        name_type_index = field_ref.name_and_type_index;
+        write!(output_buffer, "// Field ")?;
+        affected = true;
+    }
+    let class_const = &constant_pool[class_index as usize];
+    if let ConstantPool::Class(c) = class_const {
+        let class_name = &constant_pool[c.name_index as usize];
+        if let ConstantPool::Utf8(name) = class_name {
+            let name = String::from(name);
+            write!(output_buffer, "{name}.")?;
+            affected = true;
+        }
+    }
+    let name_type_const = &constant_pool[name_type_index as usize];
+    if let ConstantPool::NameAndType(nt) = name_type_const {
+        let name = &constant_pool[nt.name_index as usize];
+        if let ConstantPool::Utf8(name) = name {
+            let name = String::from(name);
+            if name == "<init>" {
+                write!(output_buffer, "\"{name}\":")?;
+                affected = true;
+            } else {
+                write!(output_buffer, "{name}:")?;
+                affected = true;
+            }
+        }
+        let desc = &constant_pool[nt.descriptor_index as usize];
+        if let ConstantPool::Utf8(desc) = desc {
+            let desc = String::from(desc);
+            write!(output_buffer, "{desc}")?;
+            affected = true;
+        }
+    }
+    Ok(affected)
 }
