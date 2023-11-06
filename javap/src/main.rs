@@ -432,6 +432,11 @@ fn disassemble(
                 if result_var_index > -1 {
                     write!(output_buffer, " {result_var_index}",)?;
                 }
+                if result_offset > -1 {
+                    let destination = ((cursor.position() - 1) as i32 + result_offset)
+                        - instruction.get_const_operands().len() as i32;
+                    write!(output_buffer, " {destination}",)?;
+                }
                 if !result_imm.is_empty() {
                     for imm in result_imm {
                         write!(output_buffer, " {imm}")?;
