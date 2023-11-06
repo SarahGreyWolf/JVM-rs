@@ -319,6 +319,7 @@ fn output_class(
                 &mut output_buffer,
             )?;
         }
+        writeln!(output_buffer, "")?;
     }
     writeln!(output_buffer, "}}")?;
     Ok(output_buffer)
@@ -332,9 +333,13 @@ fn disassemble(
 ) -> Result<(), Box<dyn std::error::Error>> {
     for attrib in &method.attributes {
         let mut longest_mnemonic: usize = 0;
+        let mut largest_code_length: usize = 0;
         if let AttributeInfo::Code(code) = attrib {
             let bytes = code.code.clone();
             let mut cursor = Cursor::new(bytes.as_slice());
+            if code.code_length > largest_code_length as u32 {
+                largest_code_length = code.code_length as usize;
+            }
             while let Ok(byte) = cursor.read_u8() {
                 let mnemonic = Mnemonic::from(byte);
                 let size = String::from(mnemonic).len();
@@ -352,9 +357,11 @@ fn disassemble(
                 if instruction.get_const_operands().is_empty() {
                     writeln!(
                         output_buffer,
-                        "\t\t{}: {}",
-                        cursor.position(),
-                        String::from(mnemonic)
+                        "\t\t{:in_width$}: {:m_width$}",
+                        cursor.position() - 1,
+                        String::from(mnemonic),
+                        in_width = largest_code_length.checked_ilog10().unwrap_or(0) as usize,
+                        m_width = longest_mnemonic
                     )?;
                     continue;
                 }
@@ -413,13 +420,30 @@ fn disassemble(
                 }
                 write!(
                     output_buffer,
-                    "\t\t{}: {:width$}",
-                    cursor.position() - instruction.get_const_operands().len() as u64,
+                    "\t\t{:in_width$}: {:m_width$}",
+                    cursor.position() - instruction.get_const_operands().len() as u64 - 1,
                     String::from(mnemonic),
-                    width = longest_mnemonic
+                    in_width = largest_code_length.checked_ilog10().unwrap_or(0) as usize,
+                    m_width = longest_mnemonic
                 )?;
                 if result_pool_index > -1 {
-                    write!(output_buffer, " #{result_pool_index}\t\t\t",)?;
+                    write!(output_buffer, " #{result_pool_index}\t\t\t")?;
+                }
+                if result_var_index > -1 {
+                    write!(output_buffer, " {result_var_index}",)?;
+                }
+                if !result_imm.is_empty() {
+                    for imm in result_imm {
+                        write!(output_buffer, " {imm}")?;
+                    }
+                }
+                if result_pool_index > -1 {
+                    write!(
+                        output_buffer,
+                        "{:1$}",
+                        "",
+                        (constant_pool.len().checked_ilog10().unwrap_or(0) as usize)
+                    )?;
                     let constant = &constant_pool[result_pool_index as usize];
                     if get_data_from_ref(constant_pool, constant, output_buffer)? == false {
                         match constant {
@@ -436,17 +460,6 @@ fn disassemble(
                                 dbg!(constant);
                             }
                         }
-                    }
-                }
-                if result_var_index > -1 {
-                    write!(output_buffer, " {result_var_index}",)?;
-                }
-                if result_offset > -1 {
-                    write!(output_buffer, " {result_offset}",)?;
-                }
-                if !result_imm.is_empty() {
-                    for imm in result_imm {
-                        write!(output_buffer, " {imm}")?;
                     }
                 }
                 write!(output_buffer, "\n")?;
