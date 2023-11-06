@@ -450,7 +450,9 @@ fn disassemble(
                         (constant_pool.len().checked_ilog10().unwrap_or(0) as usize)
                     )?;
                     let constant = &constant_pool[result_pool_index as usize];
-                    if get_data_from_ref(constant_pool, constant, output_buffer)? == false {
+                    if get_data_from_ref(this_class_name, constant_pool, constant, output_buffer)?
+                        == false
+                    {
                         match constant {
                             ConstantPool::String(string) => {
                                 write!(output_buffer, "// String ")?;
@@ -461,8 +463,17 @@ fn disassemble(
                                     write!(output_buffer, "{string}")?;
                                 }
                             }
+                            ConstantPool::Class(class) => {
+                                write!(output_buffer, "// class ")?;
+                                if let ConstantPool::Utf8(string) =
+                                    &constant_pool[class.name_index as usize]
+                                {
+                                    let string = String::from(string);
+                                    write!(output_buffer, "{string}")?;
+                                }
+                            }
                             _ => {
-                                dbg!(constant);
+                                //dbg!(constant);
                             }
                         }
                     }
