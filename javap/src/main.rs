@@ -98,16 +98,16 @@ fn output_class(
             }
         }
     }
-    let class_name = if let ConstantPool::Class(c) = &class.constant_pool[class.this_class as usize]
-    {
-        if let ConstantPool::Utf8(cn) = &class.constant_pool[c.name_index as usize] {
-            String::from(cn)
+    let this_class_name =
+        if let ConstantPool::Class(c) = &class.constant_pool[class.this_class as usize] {
+            if let ConstantPool::Utf8(cn) = &class.constant_pool[c.name_index as usize] {
+                String::from(cn)
+            } else {
+                unreachable!("Could not get class name from index {}", c.name_index);
+            }
         } else {
-            unreachable!("Could not get class name from index {}", c.name_index);
-        }
-    } else {
-        unreachable!("Could not get class from index {}", class.this_class);
-    };
+            unreachable!("Could not get class from index {}", class.this_class);
+        };
     let access_flags: String = class
         .access_flags
         .iter()
@@ -122,7 +122,7 @@ fn output_class(
         .join(" ")
         .trim()
         .to_string();
-    let mut class_def = format!("{access_flags} class {class_name} {{");
+    let mut class_def = format!("{access_flags} class {this_class_name} {{");
     class_def = class_def.trim().to_string();
     writeln!(output_buffer, "{class_def}")?;
     for field in &class.fields {
@@ -263,7 +263,7 @@ fn output_class(
             if let ConstantPool::Utf8(name) = &class.constant_pool[method.name_index as usize] {
                 let mut name = String::from(name);
                 if name == "<init>" {
-                    name = class_name.clone();
+                    name = this_class_name.clone();
                 }
                 name
             } else {
@@ -297,7 +297,7 @@ fn output_class(
                 .collect::<Vec<String>>()
                 .join(", ");
             let return_type = method.get_return(&class.constant_pool);
-            let mut method_def = if method_name == class_name {
+            let mut method_def = if method_name == this_class_name {
                 format!(
                     "{access_flags} {method_name}({params});",
                     params = params.trim_matches(',').trim_start_matches('L')
@@ -312,7 +312,12 @@ fn output_class(
             writeln!(output_buffer, "\t {method_def}")?;
         }
         if args.disassemble {
-            disassemble(&method, &class.constant_pool, &mut output_buffer)?;
+            disassemble(
+                &this_class_name,
+                &method,
+                &class.constant_pool,
+                &mut output_buffer,
+            )?;
         }
     }
     writeln!(output_buffer, "}}")?;
@@ -320,6 +325,7 @@ fn output_class(
 }
 
 fn disassemble(
+    this_class_name: &str,
     method: &MethodInfo,
     constant_pool: &[ConstantPool],
     output_buffer: &mut Vec<u8>,
@@ -451,6 +457,7 @@ fn disassemble(
 }
 
 fn get_data_from_ref(
+    this_class_name: &str,
     constant_pool: &[ConstantPool],
     r#type: &ConstantPool,
     output_buffer: &mut Vec<u8>,
@@ -470,12 +477,17 @@ fn get_data_from_ref(
         write!(output_buffer, "// Field ")?;
         affected = true;
     }
+    if affected == false {
+        return Ok(affected);
+    }
     let class_const = &constant_pool[class_index as usize];
     if let ConstantPool::Class(c) = class_const {
         let class_name = &constant_pool[c.name_index as usize];
         if let ConstantPool::Utf8(name) = class_name {
             let name = String::from(name);
-            write!(output_buffer, "{name}.")?;
+            if name != this_class_name {
+                write!(output_buffer, "{name}.")?;
+            }
             affected = true;
         }
     }
