@@ -541,23 +541,17 @@ fn get_data_from_ref(
     }
     let name_type_const = &constant_pool[name_type_index as usize];
     if let ConstantPool::NameAndType(nt) = name_type_const {
-        let name = &constant_pool[nt.name_index as usize];
-        if let ConstantPool::Utf8(name) = name {
-            let name = String::from(name);
-            if name == "<init>" {
-                write!(output_buffer, "\"{name}\":")?;
-                affected = true;
-            } else {
-                write!(output_buffer, "{name}:")?;
-                affected = true;
-            }
-        }
-        let desc = &constant_pool[nt.descriptor_index as usize];
-        if let ConstantPool::Utf8(desc) = desc {
-            let desc = String::from(desc);
-            write!(output_buffer, "{desc}")?;
+        let name = nt.get_name(constant_pool)?;
+        if name == "<init>" {
+            write!(output_buffer, "\"{name}\":")?;
+            affected = true;
+        } else {
+            write!(output_buffer, "{name}:")?;
             affected = true;
         }
+        let desc = nt.get_descriptor(constant_pool)?;
+        write!(output_buffer, "{desc}")?;
+        affected = true;
     }
     Ok(affected)
 }
