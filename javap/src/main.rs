@@ -519,6 +519,12 @@ fn get_data_from_ref(
         write!(output_buffer, "// Field ")?;
         affected = true;
     }
+    if let ConstantPool::InterfaceMethodref(int_meth_ref) = r#type {
+        class_index = int_meth_ref.class_index;
+        name_type_index = int_meth_ref.name_and_type_index;
+        write!(output_buffer, "// InterfaceMethod ")?;
+        affected = true;
+    }
     if affected == false {
         return Ok(affected);
     }
