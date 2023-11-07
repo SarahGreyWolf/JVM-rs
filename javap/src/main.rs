@@ -472,6 +472,19 @@ fn disassemble(
                                     write!(output_buffer, "{string}")?;
                                 }
                             }
+                            ConstantPool::InvokeDynamic(dynamic) => {
+                                if let ConstantPool::NameAndType(nam_typ) =
+                                    &constant_pool[dynamic.name_and_type_index as usize]
+                                {
+                                    let name = nam_typ.get_name(constant_pool)?;
+                                    let desc = nam_typ.get_descriptor(constant_pool)?;
+                                    write!(
+                                        output_buffer,
+                                        "// InvokeDynamic #{}:{name}:{desc}",
+                                        result_imm[0]
+                                    )?;
+                                }
+                            }
                             _ => {
                                 //dbg!(constant);
                             }
