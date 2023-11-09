@@ -133,18 +133,19 @@ fn output_class(
         {
             is_secret_private = true;
         }
-        if args.public && (!args.protected && !args.private) {
-            if field.access_flags.contains(&FieldAccessFlags::AccProtected)
+        if args.public
+            && (!args.protected && !args.private)
+            && (field.access_flags.contains(&FieldAccessFlags::AccProtected)
                 || field.access_flags.contains(&FieldAccessFlags::AccPrivate)
-                || (is_secret_private && !args.package)
-            {
-                continue;
-            }
+                || (is_secret_private && !args.package))
+        {
+            continue;
         }
-        if (args.protected || args.package) && !args.private {
-            if field.access_flags.contains(&FieldAccessFlags::AccPrivate) {
-                continue;
-            }
+        if (args.protected || args.package)
+            && !args.private
+            && field.access_flags.contains(&FieldAccessFlags::AccPrivate)
+        {
+            continue;
         }
         let field_name = if let ConstantPool::Utf8(field_name) =
             &class.constant_pool[field.name_index as usize]
@@ -221,18 +222,16 @@ fn output_class(
                     ConstantPool::Package(_) => todo!(),
                     ConstantPool::Unknown => todo!(),
                 }
+            } else if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
+                format!("{access_flags} {name} {field_name};")
             } else {
-                if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
-                    format!("{access_flags} {name} {field_name};")
-                } else {
-                    format!("{access_flags} {_type} {field_name};")
-                }
+                format!("{access_flags} {_type} {field_name};")
             };
             writeln!(output_buffer, "\t{field_def}")?;
         }
     }
     if class.field_count > 0 {
-        write!(output_buffer, "\n")?;
+        writeln!(output_buffer)?;
     }
     for method in &class.methods {
         let mut is_secret_private = false;
@@ -244,20 +243,21 @@ fn output_class(
         {
             is_secret_private = true;
         }
-        if args.public && (!args.protected && !args.private) {
-            if method
+        if args.public
+            && (!args.protected && !args.private)
+            && (method
                 .access_flags
                 .contains(&MethodAccessFlags::AccProtected)
                 || method.access_flags.contains(&MethodAccessFlags::AccPrivate)
-                || is_secret_private
-            {
-                continue;
-            }
+                || is_secret_private)
+        {
+            continue;
         }
-        if (args.protected || args.package) && !args.private {
-            if method.access_flags.contains(&MethodAccessFlags::AccPrivate) {
-                continue;
-            }
+        if (args.protected || args.package)
+            && !args.private
+            && method.access_flags.contains(&MethodAccessFlags::AccPrivate)
+        {
+            continue;
         }
         let method_name =
             if let ConstantPool::Utf8(name) = &class.constant_pool[method.name_index as usize] {
@@ -314,12 +314,12 @@ fn output_class(
         if args.disassemble {
             disassemble(
                 &this_class_name,
-                &method,
+                method,
                 &class.constant_pool,
                 &mut output_buffer,
             )?;
         }
-        writeln!(output_buffer, "")?;
+        writeln!(output_buffer)?;
     }
     writeln!(output_buffer, "}}")?;
     Ok(output_buffer)
@@ -450,8 +450,7 @@ fn disassemble(
                         (constant_pool.len().checked_ilog10().unwrap_or(0) as usize)
                     )?;
                     let constant = &constant_pool[result_pool_index as usize];
-                    if get_data_from_ref(this_class_name, constant_pool, constant, output_buffer)?
-                        == false
+                    if !get_data_from_ref(this_class_name, constant_pool, constant, output_buffer)?
                     {
                         match constant {
                             ConstantPool::String(string) => {
@@ -491,7 +490,7 @@ fn disassemble(
                         }
                     }
                 }
-                write!(output_buffer, "\n")?;
+                writeln!(output_buffer)?;
             }
         }
     }
@@ -525,7 +524,7 @@ fn get_data_from_ref(
         write!(output_buffer, "// InterfaceMethod ")?;
         affected = true;
     }
-    if affected == false {
+    if !affected {
         return Ok(affected);
     }
     let class_const = &constant_pool[class_index as usize];
@@ -544,10 +543,8 @@ fn get_data_from_ref(
         let name = nt.get_name(constant_pool)?;
         if name == "<init>" {
             write!(output_buffer, "\"{name}\":")?;
-            affected = true;
         } else {
             write!(output_buffer, "{name}:")?;
-            affected = true;
         }
         let desc = nt.get_descriptor(constant_pool)?;
         write!(output_buffer, "{desc}")?;
