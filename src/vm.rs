@@ -306,3 +306,65 @@ impl Default for VMSettings {
         }
     }
 }
+impl VM {
+    pub fn new(settings: Option<VMSettings>) -> VM {
+        let settings = if let Some(settings) = settings {
+            settings
+        } else {
+            VMSettings::default()
+        };
+        VM {
+            threads: vec![],
+            heap: Arc::new(Mutex::new(vec![0u8; settings.heap_max])),
+            method_area: Arc::new(Mutex::new(vec![])),
+        }
+    }
+}
+fn load_class(
+    heap: &mut Vec<u8>,
+    method_area: &mut Vec<ClassLoc>,
+    path: &Path,
+) -> Result<Class, Box<dyn Error>> {
+    if let Some(ext) = path.extension() {
+        if ext != "class" {
+            // FIXME: Handle all panics (get rid of them for proper errors)
+            panic!("Provided file was not a class");
+        }
+        let mut class_file: File = File::open(path).expect("Failed to open file");
+        let Some(metadata) = class_file.metadata().ok() else {
+            panic!("Could not get metadata for class file");
+        };
+        let mut contents = vec![00; metadata.len() as usize];
+        class_file.read_exact(&mut contents)?;
+        let class = Class::from_bytes(&contents)?;
+        let class_name = class.get_class_name()?;
+        if method_area.is_empty() {
+            heap[METHOD_SPACE..METHOD_SPACE + contents.len()].copy_from_slice(&contents);
+            method_area.push(ClassLoc::new(
+                class_name,
+                METHOD_SPACE..METHOD_SPACE + contents.len(),
+            ));
+        } else {
+            let mut end_of_currents: usize = 0;
+            for ClassLoc(_, range) in method_area.iter() {
+                if range.end > end_of_currents {
+                    end_of_currents = range.end;
+                }
+            }
+            if end_of_currents > heap.capacity()
+                || end_of_currents + contents.len() > heap.capacity()
+            {
+                // FIXME: This should throw an `OutOfMemoryError` in the VM
+                panic!("OUT OF MEMORY ERROR: Reached Heap Capacity");
+            }
+            heap[end_of_currents..end_of_currents + contents.len()].copy_from_slice(&contents);
+            method_area.push(ClassLoc::new(
+                class_name,
+                end_of_currents..end_of_currents + contents.len(),
+            ));
+        }
+        Ok(class)
+    } else {
+        panic!("Provided path was not a file!");
+    }
+}
