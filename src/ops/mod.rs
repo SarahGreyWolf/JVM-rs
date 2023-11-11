@@ -2,7 +2,7 @@ pub mod mnemonics;
 
 use std::io::Cursor;
 
-use crate::vm::StackFrame;
+use crate::vm::{FrameValues, StackFrame};
 use byteorder::ReadBytesExt;
 use jloader::constants::{self, ConstantPool};
 use mnemonics::Mnemonic;
@@ -22,10 +22,12 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    pub fn from_mnemonic_frame(
-        mnemonic: &Mnemonic,
-        frame: &mut StackFrame,
-    ) -> Result<Instruction, Box<dyn std::error::Error>> {
+    pub fn from_frame(frame: &mut StackFrame) -> Result<Instruction, Box<dyn std::error::Error>> {
+        let mut pc_opt = frame.pc.as_mut();
+        let Some(mut pc) = pc_opt else {
+            panic!("Program Counter was None");
+        };
+        let mnemonic = Mnemonic::from(frame.code[*pc as usize]);
         let result = match mnemonic {
             Mnemonic::Aaload => Instruction {
                 mnemonic: Mnemonic::Aaload,
@@ -980,14 +982,18 @@ impl Instruction {
             Mnemonic::Unknown(opcode) => {
                 eprintln!("UNKNOWN INSTRUCTION {opcode} AT {}", frame.pc.unwrap());
                 Instruction {
-                    mnemonic: Mnemonic::Unknown(*opcode),
+                    mnemonic: Mnemonic::Unknown(opcode),
                     const_operands: vec![],
                 }
             }
         };
-        if let Some(mut pc) = frame.pc {
-            pc += 1;
-        }
+        let mut pc_opt = frame.pc.as_mut();
+        let Some(mut pc) = pc_opt else {
+            panic!("Program Counter was None");
+        };
+        println!("Program Counter is: {pc}");
+        *pc += 1;
+        println!("Program Counter is: {pc}");
         Ok(result)
     }
     pub fn from_mnemonic_cursor(
@@ -1956,215 +1962,399 @@ impl Instruction {
     }
 
     pub fn get_const_operands(&self) -> &Vec<OperandType> { &self.const_operands }
+    pub fn get_mnemonic(&self) -> &Mnemonic { &self.mnemonic }
 }
 
 fn get_operand(frame: &mut StackFrame) -> u8 {
-    let Some(mut pc) = frame.pc else {
+    let Some(pc) = frame.pc.as_mut() else {
         panic!("Program Counter was None")
     };
-    pc += 1;
-    frame.code[pc as usize]
+    *pc += 1;
+    frame.code[*pc as usize]
 }
 
-fn aaload(inst: Instruction) { todo!() }
-fn aastore(inst: Instruction) { todo!() }
-fn aconst_null(inst: Instruction) { todo!() }
-fn aload(inst: Instruction) { todo!() }
-fn aload_0(inst: Instruction) { todo!() }
-fn aload_1(inst: Instruction) { todo!() }
-fn aload_2(inst: Instruction) { todo!() }
-fn aload_3(inst: Instruction) { todo!() }
-fn anewarray(inst: Instruction) { todo!() }
-fn areturn(inst: Instruction) { todo!() }
-fn arraylength(inst: Instruction) { todo!() }
-fn astore(inst: Instruction) { todo!() }
-fn astore_0(inst: Instruction) { todo!() }
-fn astore_1(inst: Instruction) { todo!() }
-fn astore_2(inst: Instruction) { todo!() }
-fn astore_3(inst: Instruction) { todo!() }
-fn athrow(inst: Instruction) { todo!() }
-fn baload(inst: Instruction) { todo!() }
-fn bastore(inst: Instruction) { todo!() }
-fn bipush(inst: Instruction) { todo!() }
-fn caload(inst: Instruction) { todo!() }
-fn castore(inst: Instruction) { todo!() }
-fn checkcast(inst: Instruction) { todo!() }
-fn d2f(inst: Instruction) { todo!() }
-fn d2i(inst: Instruction) { todo!() }
-fn d2l(inst: Instruction) { todo!() }
-fn dadd(inst: Instruction) { todo!() }
-fn daload(inst: Instruction) { todo!() }
-fn dastore(inst: Instruction) { todo!() }
-fn dcmpg(inst: Instruction) { todo!() }
-fn dcmpl(inst: Instruction) { todo!() }
-fn dconst_0(inst: Instruction) { todo!() }
-fn dconst_1(inst: Instruction) { todo!() }
-fn ddiv(inst: Instruction) { todo!() }
-fn dload(inst: Instruction) { todo!() }
-fn dload_0(inst: Instruction) { todo!() }
-fn dload_1(inst: Instruction) { todo!() }
-fn dload_2(inst: Instruction) { todo!() }
-fn dload_3(inst: Instruction) { todo!() }
-fn dmul(inst: Instruction) { todo!() }
-fn dneg(inst: Instruction) { todo!() }
-fn drem(inst: Instruction) { todo!() }
-fn dreturn(inst: Instruction) { todo!() }
-fn dstore(inst: Instruction) { todo!() }
-fn dstore_0(inst: Instruction) { todo!() }
-fn dstore_1(inst: Instruction) { todo!() }
-fn dstore_2(inst: Instruction) { todo!() }
-fn dstore_3(inst: Instruction) { todo!() }
-fn dsub(inst: Instruction) { todo!() }
-fn dup(inst: Instruction) { todo!() }
-fn dup_x1(inst: Instruction) { todo!() }
-fn dup_x2(inst: Instruction) { todo!() }
-fn dup2(inst: Instruction) { todo!() }
-fn dup2_x1(inst: Instruction) { todo!() }
-fn dup2_x2(inst: Instruction) { todo!() }
-fn f2d(inst: Instruction) { todo!() }
-fn f2i(inst: Instruction) { todo!() }
-fn f2l(inst: Instruction) { todo!() }
-fn fadd(inst: Instruction) { todo!() }
-fn faload(inst: Instruction) { todo!() }
-fn fastore(inst: Instruction) { todo!() }
-fn fcmpg(inst: Instruction) { todo!() }
-fn fcmpl(inst: Instruction) { todo!() }
-fn fconst_0(inst: Instruction) { todo!() }
-fn fconst_1(inst: Instruction) { todo!() }
-fn fconst_2(inst: Instruction) { todo!() }
-fn fdiv(inst: Instruction) { todo!() }
-fn fload(inst: Instruction) { todo!() }
-fn fload_0(inst: Instruction) { todo!() }
-fn fload_1(inst: Instruction) { todo!() }
-fn fload_2(inst: Instruction) { todo!() }
-fn fload_3(inst: Instruction) { todo!() }
-fn fmul(inst: Instruction) { todo!() }
-fn fneg(inst: Instruction) { todo!() }
-fn frem(inst: Instruction) { todo!() }
-fn freturn(inst: Instruction) { todo!() }
-fn fstore(inst: Instruction) { todo!() }
-fn fstore_0(inst: Instruction) { todo!() }
-fn fstore_1(inst: Instruction) { todo!() }
-fn fstore_2(inst: Instruction) { todo!() }
-fn fstore_3(inst: Instruction) { todo!() }
-fn fsub(inst: Instruction) { todo!() }
-fn getfield(inst: Instruction) { todo!() }
-fn getstatic(inst: Instruction) { todo!() }
-fn goto(inst: Instruction) { todo!() }
-fn goto_w(inst: Instruction) { todo!() }
-fn i2b(inst: Instruction) { todo!() }
-fn i2c(inst: Instruction) { todo!() }
-fn i2d(inst: Instruction) { todo!() }
-fn i2f(inst: Instruction) { todo!() }
-fn i2l(inst: Instruction) { todo!() }
-fn i2s(inst: Instruction) { todo!() }
-fn iadd(inst: Instruction) { todo!() }
-fn iaload(inst: Instruction) { todo!() }
-fn iand(inst: Instruction) { todo!() }
-fn iastore(inst: Instruction) { todo!() }
-fn iconst_m1(inst: Instruction) { todo!() }
-fn iconst_0(inst: Instruction) { todo!() }
-fn iconst_1(inst: Instruction) { todo!() }
-fn iconst_2(inst: Instruction) { todo!() }
-fn iconst_3(inst: Instruction) { todo!() }
-fn iconst_4(inst: Instruction) { todo!() }
-fn iconst_5(inst: Instruction) { todo!() }
-fn idiv(inst: Instruction) { todo!() }
-fn if_acmpeq(inst: Instruction) { todo!() }
-fn if_acmpne(inst: Instruction) { todo!() }
-fn if_icmpeq(inst: Instruction) { todo!() }
-fn if_icmpne(inst: Instruction) { todo!() }
-fn if_icmplt(inst: Instruction) { todo!() }
-fn if_icmpge(inst: Instruction) { todo!() }
-fn if_icmpgt(inst: Instruction) { todo!() }
-fn if_icmple(inst: Instruction) { todo!() }
-fn ifeq(inst: Instruction) { todo!() }
-fn ifne(inst: Instruction) { todo!() }
-fn iflt(inst: Instruction) { todo!() }
-fn ifge(inst: Instruction) { todo!() }
-fn ifgt(inst: Instruction) { todo!() }
-fn ifle(inst: Instruction) { todo!() }
-fn ifnonnull(inst: Instruction) { todo!() }
-fn ifnull(inst: Instruction) { todo!() }
-fn iinc(inst: Instruction) { todo!() }
-fn iload(inst: Instruction) { todo!() }
-fn iload_0(inst: Instruction) { todo!() }
-fn iload_1(inst: Instruction) { todo!() }
-fn iload_2(inst: Instruction) { todo!() }
-fn iload_3(inst: Instruction) { todo!() }
-fn imul(inst: Instruction) { todo!() }
-fn ineg(inst: Instruction) { todo!() }
-fn instanceof(inst: Instruction) { todo!() }
-fn invokedynamic(inst: Instruction) { todo!() }
-fn invokeinterface(inst: Instruction) { todo!() }
-fn invokespecial(inst: Instruction) { todo!() }
-fn invokestatic(inst: Instruction) { todo!() }
-fn invokevirtual(inst: Instruction) { todo!() }
-fn ior(inst: Instruction) { todo!() }
-fn irem(inst: Instruction) { todo!() }
-fn ireturn(inst: Instruction) { todo!() }
-fn ishl(inst: Instruction) { todo!() }
-fn ishr(inst: Instruction) { todo!() }
-fn istore(inst: Instruction) { todo!() }
-fn istore_0(inst: Instruction) { todo!() }
-fn istore_1(inst: Instruction) { todo!() }
-fn istore_2(inst: Instruction) { todo!() }
-fn istore_3(inst: Instruction) { todo!() }
-fn isub(inst: Instruction) { todo!() }
-fn iushr(inst: Instruction) { todo!() }
-fn ixor(inst: Instruction) { todo!() }
-fn jsr(inst: Instruction) { todo!() }
-fn jsr_w(inst: Instruction) { todo!() }
-fn l2d(inst: Instruction) { todo!() }
-fn l2f(inst: Instruction) { todo!() }
-fn l2i(inst: Instruction) { todo!() }
-fn ladd(inst: Instruction) { todo!() }
-fn laload(inst: Instruction) { todo!() }
-fn land(inst: Instruction) { todo!() }
-fn lastore(inst: Instruction) { todo!() }
-fn lcmp(inst: Instruction) { todo!() }
-fn lconst_0(inst: Instruction) { todo!() }
-fn lconst_1(inst: Instruction) { todo!() }
-fn ldc(inst: Instruction) { todo!() }
-fn ldc_w(inst: Instruction) { todo!() }
-fn ldc2_w(inst: Instruction) { todo!() }
-fn ldiv(inst: Instruction) { todo!() }
-fn lload(inst: Instruction) { todo!() }
-fn lload_0(inst: Instruction) { todo!() }
-fn lload_1(inst: Instruction) { todo!() }
-fn lload_2(inst: Instruction) { todo!() }
-fn lload_3(inst: Instruction) { todo!() }
-fn lmul(inst: Instruction) { todo!() }
-fn lneg(inst: Instruction) { todo!() }
-fn lookupswitch(inst: Instruction) { todo!() }
-fn lor(inst: Instruction) { todo!() }
-fn lrem(inst: Instruction) { todo!() }
-fn lreturn(inst: Instruction) { todo!() }
-fn lshl(inst: Instruction) { todo!() }
-fn lshr(inst: Instruction) { todo!() }
-fn lstore(inst: Instruction) { todo!() }
-fn lstore_0(inst: Instruction) { todo!() }
-fn lstore_1(inst: Instruction) { todo!() }
-fn lstore_2(inst: Instruction) { todo!() }
-fn lstore_3(inst: Instruction) { todo!() }
-fn lsub(inst: Instruction) { todo!() }
-fn lushr(inst: Instruction) { todo!() }
-fn lxor(inst: Instruction) { todo!() }
-fn monitorenter(inst: Instruction) { todo!() }
-fn monitorexit(inst: Instruction) { todo!() }
-fn multianewarray(inst: Instruction) { todo!() }
-fn new(inst: Instruction) { todo!() }
-fn newarray(inst: Instruction) { todo!() }
-fn nop(inst: Instruction) { todo!() }
-fn pop(inst: Instruction) { todo!() }
-fn pop2(inst: Instruction) { todo!() }
-fn putfield(inst: Instruction) { todo!() }
-fn putstatic(inst: Instruction) { todo!() }
-fn ret(inst: Instruction) { todo!() }
-fn r#return(inst: Instruction) { todo!() }
-fn saload(inst: Instruction) { todo!() }
-fn satore(inst: Instruction) { todo!() }
-fn sipush(inst: Instruction) { todo!() }
-fn swap(inst: Instruction) { todo!() }
-fn tableswitch(inst: Instruction) { todo!() }
-fn wide(inst: Instruction) { todo!() }
+pub fn aaload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn aastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn aconst_null(frame: &mut StackFrame, inst: Instruction) {
+    frame.stack.push(FrameValues::Reference(0));
+}
+pub fn aload(frame: &mut StackFrame, inst: Instruction) {
+    let OperandType::VarIndex(index) = inst.get_const_operands()[0] else {
+        panic!("Operand type for aload was not a var index");
+    };
+    let local = frame.locals[index as usize];
+    if let FrameValues::Reference(_) = local {
+        frame.stack.push(local);
+    } else {
+        panic!("Local value at [{index}] was not a reference");
+    }
+}
+pub fn aload_0(frame: &mut StackFrame, inst: Instruction) {
+    let local = frame.locals[0];
+    if let FrameValues::Reference(_) = local {
+        frame.stack.push(local);
+    } else {
+        panic!("Local value at [0] was not a reference");
+    }
+}
+pub fn aload_1(frame: &mut StackFrame, inst: Instruction) {
+    let local = frame.locals[1];
+    if let FrameValues::Reference(_) = local {
+        frame.stack.push(local);
+    } else {
+        panic!("Local value at [1] was not a reference");
+    }
+}
+pub fn aload_2(frame: &mut StackFrame, inst: Instruction) {
+    let local = frame.locals[2];
+    if let FrameValues::Reference(_) = local {
+        frame.stack.push(local);
+    } else {
+        panic!("Local value at [2] was not a reference");
+    }
+}
+pub fn aload_3(frame: &mut StackFrame, inst: Instruction) {
+    let local = frame.locals[3];
+    if let FrameValues::Reference(_) = local {
+        frame.stack.push(local);
+    } else {
+        panic!("Local value at [3] was not a reference");
+    }
+}
+pub fn anewarray(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn areturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn arraylength(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn astore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn astore_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn astore_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn astore_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn astore_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn athrow(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn baload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn bastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn bipush(frame: &mut StackFrame, inst: Instruction) {
+    let operands = inst.get_const_operands();
+    let OperandType::Immediate(byte) = operands[0] else {
+        panic!("Operand [0] for bipush was not an immediate");
+    };
+    frame.stack.push(FrameValues::Int(byte as i32));
+}
+pub fn caload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn castore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn checkcast(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn d2f(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn d2i(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn d2l(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dadd(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn daload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dcmpg(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dcmpl(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dconst_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dconst_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ddiv(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dload_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dload_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dload_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dload_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dmul(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dneg(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn drem(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dreturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dstore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dstore_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dstore_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dstore_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dstore_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dsub(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dup(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dup_x1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dup_x2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dup2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dup2_x1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dup2_x2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn f2d(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn f2i(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn f2l(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fadd(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn faload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fcmpg(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fcmpl(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fconst_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fconst_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fconst_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fdiv(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fload_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fload_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fload_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fload_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fmul(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fneg(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn frem(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn freturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fstore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fstore_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fstore_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fstore_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fstore_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fsub(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn getfield(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn getstatic(frame: &mut StackFrame, inst: Instruction) {
+    let operands = inst.get_const_operands();
+    let Some(OperandType::PoolIndex(byte1)) = operands.get(0) else {
+        panic!("Operand [0] for getstatic does not exist or was not a PoolIndex");
+    };
+    let Some(OperandType::PoolIndex(byte2)) = operands.get(1) else {
+        panic!("Operand [1] for getstatic does not exist or was not a PoolIndex");
+    };
+    let index: u16 = ((*byte1 as u16) << 8) | *byte2 as u16;
+
+    let Some(ConstantPool::Fieldref(field)) = frame.pool.get(index as usize) else {
+        panic!("Index {index} into Runtime Pool does not exist or is not a FieldRef");
+    };
+}
+pub fn goto(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn goto_w(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn i2b(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn i2c(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn i2d(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn i2f(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn i2l(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn i2s(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn iadd(frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(a)) = frame.stack.pop() else {
+        panic!("Value on top of stack was not int");
+    };
+    let Some(FrameValues::Int(b)) = frame.stack.pop() else {
+        panic!("Value on top of stack was not int");
+    };
+    let (res, _) = a.overflowing_add(b);
+    frame.stack.push(FrameValues::Int(res));
+}
+pub fn iaload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn iand(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn iastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn iconst_m1(frame: &mut StackFrame, inst: Instruction) {
+    frame.stack.push(FrameValues::Int(-1));
+}
+pub fn iconst_0(frame: &mut StackFrame, inst: Instruction) {
+    frame.stack.push(FrameValues::Int(0));
+}
+pub fn iconst_1(frame: &mut StackFrame, inst: Instruction) {
+    frame.stack.push(FrameValues::Int(1));
+}
+pub fn iconst_2(frame: &mut StackFrame, inst: Instruction) {
+    frame.stack.push(FrameValues::Int(2));
+}
+pub fn iconst_3(frame: &mut StackFrame, inst: Instruction) {
+    frame.stack.push(FrameValues::Int(3));
+}
+pub fn iconst_4(frame: &mut StackFrame, inst: Instruction) {
+    frame.stack.push(FrameValues::Int(4));
+}
+pub fn iconst_5(frame: &mut StackFrame, inst: Instruction) {
+    frame.stack.push(FrameValues::Int(5));
+}
+pub fn idiv(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn if_acmpeq(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn if_acmpne(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn if_icmpeq(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn if_icmpne(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn if_icmplt(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn if_icmpge(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn if_icmpgt(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn if_icmple(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ifeq(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ifne(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn iflt(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ifge(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ifgt(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ifle(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ifnonnull(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ifnull(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn iinc(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn iload(frame: &mut StackFrame, inst: Instruction) {
+    let operands = inst.get_const_operands();
+    let OperandType::VarIndex(index) = operands[0] else {
+        panic!("Operand [0] for iload was not a var index");
+    };
+    let Some(FrameValues::Int(local)) = frame.locals.get(index as usize) else {
+        panic!("Frame local[{index}] does not exist");
+    };
+    frame.stack.push(FrameValues::Int(*local));
+}
+pub fn iload_0(frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(local)) = frame.locals.get(0) else {
+        panic!("Frame local[0] does not exist");
+    };
+    frame.stack.push(FrameValues::Int(*local));
+}
+pub fn iload_1(frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(local)) = frame.locals.get(1) else {
+        panic!("Frame local[1] does not exist");
+    };
+    frame.stack.push(FrameValues::Int(*local));
+}
+pub fn iload_2(frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(local)) = frame.locals.get(2) else {
+        panic!("Frame local[2] does not exist");
+    };
+    frame.stack.push(FrameValues::Int(*local));
+}
+pub fn iload_3(frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(local)) = frame.locals.get(3) else {
+        panic!("Frame local[3] does not exist");
+    };
+    frame.stack.push(FrameValues::Int(*local));
+}
+pub fn imul(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ineg(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn instanceof(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn invokedynamic(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn invokeinterface(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn invokespecial(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn invokestatic(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn invokevirtual(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ior(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn irem(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ireturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ishl(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ishr(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn istore(frame: &mut StackFrame, inst: Instruction) {
+    let operands = inst.get_const_operands();
+    let OperandType::VarIndex(index) = operands[0] else {
+        panic!("Operand [0] for istore was not a var index");
+    };
+    let Some(mut local) = frame.locals.get_mut(index as usize) else {
+        panic!("Frame local[{index}] does not exist");
+    };
+    let Some(FrameValues::Int(top)) = frame.stack.pop() else {
+        panic!("Frame stack was empty or not an int!");
+    };
+    *local = FrameValues::Int(top);
+}
+pub fn istore_0(frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(top)) = frame.stack.pop() else {
+        panic!("Frame stack was empty or not an int!");
+    };
+    if let Some(mut local) = frame.locals.get_mut(0) {
+        *local = FrameValues::Int(top);
+    } else {
+        frame.locals.insert(0, FrameValues::Int(top));
+    }
+}
+pub fn istore_1(frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(top)) = frame.stack.pop() else {
+        panic!("Frame stack was empty or not an int!");
+    };
+    if let Some(mut local) = frame.locals.get_mut(1) {
+        *local = FrameValues::Int(top);
+    } else {
+        frame.locals.insert(1, FrameValues::Int(top));
+    }
+}
+pub fn istore_2(frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(top)) = frame.stack.pop() else {
+        panic!("Frame stack was empty or not an int!");
+    };
+    if let Some(mut local) = frame.locals.get_mut(2) {
+        *local = FrameValues::Int(top);
+    } else {
+        frame.locals.insert(2, FrameValues::Int(top));
+    }
+}
+pub fn istore_3(frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(top)) = frame.stack.pop() else {
+        panic!("Frame stack was empty or not an int!");
+    };
+    if let Some(mut local) = frame.locals.get_mut(3) {
+        *local = FrameValues::Int(top);
+    } else {
+        frame.locals.insert(3, FrameValues::Int(top));
+    }
+}
+pub fn isub(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn iushr(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ixor(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn jsr(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn jsr_w(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn l2d(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn l2f(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn l2i(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ladd(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn laload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn land(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lcmp(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lconst_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lconst_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ldc(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ldc_w(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ldc2_w(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ldiv(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lload_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lload_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lload_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lload_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lmul(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lneg(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lookupswitch(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lor(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lrem(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lreturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lshl(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lshr(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lstore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lstore_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lstore_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lstore_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lstore_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lsub(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lushr(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn lxor(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn monitorenter(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn monitorexit(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn multianewarray(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn new(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn newarray(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn nop(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn pop(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn pop2(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn putfield(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn putstatic(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ret(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn r#return(frame: &mut StackFrame, inst: Instruction) {
+    /*
+       The current method must have return type void. If the
+       current method is a synchronized method, the monitor entered
+       or reentered on invocation of the method is updated and
+       possibly exited as if by execution of a monitorexit instruction
+       (§monitorexit) in the current thread. If no exception is thrown,
+       any values on the operand stack of the current frame (§2.6) are
+       discarded.
+       The interpreter then returns control to the invoker of the method,
+       reinstating the frame of the invoker.
+    */
+    println!("Returned!");
+}
+pub fn saload(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn satore(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn sipush(frame: &mut StackFrame, inst: Instruction) {
+    let operands = inst.get_const_operands();
+    let OperandType::Immediate(byte1) = operands[0] else {
+        panic!("Operand [0] for sipush was not an immediate");
+    };
+    let OperandType::Immediate(byte2) = operands[1] else {
+        panic!("Operand [1] for sipush was not an immediate");
+    };
+    let short: u16 = ((byte1 as u16) << 8) | byte2 as u16;
+    let sign_extend: i32 = short as i32;
+    frame.stack.push(FrameValues::Int(sign_extend));
+}
+pub fn swap(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn tableswitch(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn wide(frame: &mut StackFrame, inst: Instruction) { todo!() }
