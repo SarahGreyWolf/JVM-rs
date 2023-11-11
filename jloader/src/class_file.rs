@@ -493,6 +493,16 @@ impl Class {
         output
     }
 
+    pub fn get_class_name(&self) -> Result<String, FormatError> {
+        if let ConstantPool::Class(class) = self.get_from_constant_pool(self.this_class)? {
+            class.get_name(&self.constant_pool)
+        } else {
+            Err(FormatError::new(
+                FormatCause::InvalidConstant(self.constant_pool[self.this_class as usize].clone()),
+                "Invalid constant for class_name this",
+            ))
+        }
+    }
     pub fn get_from_constant_pool(&self, index: u16) -> Result<&ConstantPool, FormatError> {
         if index > self.constant_pool_count {
             return Err(FormatError::new(FormatCause::InvalidIndex(index), ""));
