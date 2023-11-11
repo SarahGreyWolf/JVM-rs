@@ -2,6 +2,7 @@ use byteorder::{ReadBytesExt, BE};
 use std::io::Cursor;
 
 use std::error::Error;
+use std::ops::Range;
 
 use crate::access_flags::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use crate::attributes;
@@ -503,6 +504,7 @@ impl Class {
             ))
         }
     }
+
     pub fn get_from_constant_pool(&self, index: u16) -> Result<&ConstantPool, FormatError> {
         if index > self.constant_pool_count {
             return Err(FormatError::new(FormatCause::InvalidIndex(index), ""));
@@ -845,4 +847,18 @@ fn check_format(class: Class) -> Result<(), FormatError> {
     //      names, valid classes, and valid descriptors (§4.3).
 
     Ok(())
+}
+
+#[derive(Debug)]
+pub struct ClassLoc(pub String, pub Range<usize>);
+
+impl ClassLoc {
+    pub fn new(class_name: String, range: Range<usize>) -> ClassLoc { ClassLoc(class_name, range) }
+}
+
+impl From<(ClassLoc, &[u8])> for Class {
+    fn from((loc, method_area): (ClassLoc, &[u8])) -> Self {
+        // FIXME: Get rid of unwraps
+        Class::from_bytes(&method_area[loc.1]).unwrap()
+    }
 }
