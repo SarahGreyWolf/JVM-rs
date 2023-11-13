@@ -4,7 +4,11 @@ use std::io::Cursor;
 
 use crate::vm::{FrameValues, StackFrame};
 use byteorder::ReadBytesExt;
-use jloader::constants::{self, ConstantPool};
+use jloader::{
+    class_file::ClassLoc,
+    constants::{self, PoolConstants},
+    descriptors::FieldDescriptor,
+};
 use mnemonics::Mnemonic;
 
 #[derive(Debug)]

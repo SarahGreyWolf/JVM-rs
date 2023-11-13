@@ -9,7 +9,7 @@ use crate::errors::{
 
 /// [The Constant Pool](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2201%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C256%2Cnull%5D)
 #[derive(Clone, Debug)]
-pub enum ConstantPool {
+pub enum PoolConstants {
     Utf8(Utf8),
     Integer(Integer),
     Float(Float),
@@ -294,7 +294,7 @@ impl Class {
 
     pub fn get_name(
         &self,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
     ) -> Result<std::string::String, FormatError> {
         if self.name_index as usize > constant_pool.len() {
             return Err(FormatError::new(
@@ -306,7 +306,7 @@ impl Class {
                 ),
             ));
         }
-        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
+        if let PoolConstants::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
             Ok(utf8.into())
         } else {
             Err(FormatError::new(
@@ -342,7 +342,7 @@ impl String {
 
     pub fn to_string(
         &self,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
     ) -> Result<std::string::String, FormatError> {
         if self.string_index as usize > constant_pool.len() {
             return Err(FormatError::new(
@@ -354,7 +354,7 @@ impl String {
                 ),
             ));
         }
-        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.string_index as usize] {
+        if let PoolConstants::Utf8(ref utf8) = constant_pool[self.string_index as usize] {
             Ok(utf8.into())
         } else {
             Err(FormatError::new(
@@ -505,7 +505,7 @@ impl NameAndType {
 
     pub fn get_name(
         &self,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
     ) -> Result<std::string::String, FormatError> {
         if self.name_index as usize > constant_pool.len() {
             return Err(FormatError::new(
@@ -517,7 +517,7 @@ impl NameAndType {
                 ),
             ));
         }
-        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
+        if let PoolConstants::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
             Ok(utf8.into())
         } else {
             Err(FormatError::new(
@@ -532,7 +532,7 @@ impl NameAndType {
 
     pub fn get_descriptor(
         &self,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
     ) -> Result<std::string::String, FormatError> {
         if self.descriptor_index as usize > constant_pool.len() {
             return Err(FormatError::new(
@@ -544,7 +544,7 @@ impl NameAndType {
                 ),
             ));
         }
-        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.descriptor_index as usize] {
+        if let PoolConstants::Utf8(ref utf8) = constant_pool[self.descriptor_index as usize] {
             Ok(utf8.into())
         } else {
             Err(FormatError::new(
@@ -575,7 +575,7 @@ impl MethodType {
     pub fn new(descriptor_index: u16) -> MethodType { MethodType { descriptor_index } }
     pub fn get_descriptor(
         &self,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
     ) -> Result<std::string::String, FormatError> {
         if self.descriptor_index as usize > constant_pool.len() {
             return Err(FormatError::new(
@@ -587,7 +587,7 @@ impl MethodType {
                 ),
             ));
         }
-        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.descriptor_index as usize] {
+        if let PoolConstants::Utf8(ref utf8) = constant_pool[self.descriptor_index as usize] {
             Ok(utf8.into())
         } else {
             Err(FormatError::new(
@@ -788,7 +788,7 @@ impl Module {
 
     pub fn get_name(
         &self,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
     ) -> Result<std::string::String, FormatError> {
         if self.name_index as usize > constant_pool.len() {
             return Err(FormatError::new(
@@ -800,7 +800,7 @@ impl Module {
                 ),
             ));
         }
-        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
+        if let PoolConstants::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
             Ok(utf8.into())
         } else {
             Err(FormatError::new(
@@ -837,7 +837,7 @@ impl Package {
 
     pub fn get_name(
         &self,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
     ) -> Result<std::string::String, FormatError> {
         if self.name_index as usize > constant_pool.len() {
             return Err(FormatError::new(
@@ -849,7 +849,7 @@ impl Package {
                 ),
             ));
         }
-        if let ConstantPool::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
+        if let PoolConstants::Utf8(ref utf8) = constant_pool[self.name_index as usize] {
             Ok(utf8.into())
         } else {
             Err(FormatError::new(
@@ -864,56 +864,58 @@ impl Package {
 }
 
 pub fn read_constant_pool(
-    pool: &mut Vec<ConstantPool>,
+    pool: &mut Vec<PoolConstants>,
     cursor: &mut Cursor<&[u8]>,
 ) -> Result<(), Box<dyn Error>> {
     for _ in 0..pool.capacity() {
         let tag = cursor.read_u8()?;
         pool.push(match Tags::from(tag) {
-            Tags::Utf8 => ConstantPool::Utf8(Utf8::new(cursor)),
-            Tags::String => ConstantPool::String(String::new(cursor.read_u16::<BE>()?)),
-            Tags::Integer => ConstantPool::Integer(Integer::new(cursor.read_u32::<BE>()?)),
-            Tags::Float => ConstantPool::Float(Float::new(cursor.read_u32::<BE>()?)),
-            Tags::Long => ConstantPool::Long(Long::new(
+            Tags::Utf8 => PoolConstants::Utf8(Utf8::new(cursor)),
+            Tags::String => PoolConstants::String(String::new(cursor.read_u16::<BE>()?)),
+            Tags::Integer => PoolConstants::Integer(Integer::new(cursor.read_u32::<BE>()?)),
+            Tags::Float => PoolConstants::Float(Float::new(cursor.read_u32::<BE>()?)),
+            Tags::Long => PoolConstants::Long(Long::new(
                 cursor.read_u32::<BE>()?,
                 cursor.read_u32::<BE>()?,
             )),
-            Tags::Double => ConstantPool::Double(Double::new(
+            Tags::Double => PoolConstants::Double(Double::new(
                 cursor.read_u32::<BE>()?,
                 cursor.read_u32::<BE>()?,
             )),
-            Tags::Class => ConstantPool::Class(Class::new(cursor.read_u16::<BE>()?)),
-            Tags::Fieldref => ConstantPool::Fieldref(Fieldref::new(
+            Tags::Class => PoolConstants::Class(Class::new(cursor.read_u16::<BE>()?)),
+            Tags::Fieldref => PoolConstants::Fieldref(Fieldref::new(
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::Methodref => ConstantPool::Methodref(Methodref::new(
+            Tags::Methodref => PoolConstants::Methodref(Methodref::new(
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::InterfaceMethodref => ConstantPool::InterfaceMethodref(InterfaceMethodref::new(
+            Tags::InterfaceMethodref => PoolConstants::InterfaceMethodref(InterfaceMethodref::new(
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::NameAndType => ConstantPool::NameAndType(NameAndType::new(
+            Tags::NameAndType => PoolConstants::NameAndType(NameAndType::new(
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::MethodHandle => ConstantPool::MethodHandle(MethodHandle::new(
+            Tags::MethodHandle => PoolConstants::MethodHandle(MethodHandle::new(
                 cursor.read_u8()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::MethodType => ConstantPool::MethodType(MethodType::new(cursor.read_u16::<BE>()?)),
-            Tags::Dynamic => ConstantPool::Dynamic(Dynamic::new(
+            Tags::MethodType => {
+                PoolConstants::MethodType(MethodType::new(cursor.read_u16::<BE>()?))
+            }
+            Tags::Dynamic => PoolConstants::Dynamic(Dynamic::new(
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::InvokeDynamic => ConstantPool::InvokeDynamic(InvokeDynamic::new(
+            Tags::InvokeDynamic => PoolConstants::InvokeDynamic(InvokeDynamic::new(
                 cursor.read_u16::<BE>()?,
                 cursor.read_u16::<BE>()?,
             )),
-            Tags::Module => ConstantPool::Module(Module::new(cursor.read_u16::<BE>()?)),
-            Tags::Package => ConstantPool::Package(Package::new(cursor.read_u16::<BE>()?)),
+            Tags::Module => PoolConstants::Module(Module::new(cursor.read_u16::<BE>()?)),
+            Tags::Package => PoolConstants::Package(Package::new(cursor.read_u16::<BE>()?)),
             _ => {
                 return Err(Box::new(LoadingError::new(
                     LoadingCause::InvalidConstantTag(tag),

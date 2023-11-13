@@ -25,7 +25,6 @@ impl From<Utf8> for Option<Vec<FieldDescriptor>> {
         let mut peekable = value.bytes.iter().peekable();
         let mut in_object = false;
         let mut is_array = false;
-        let mut array = String::new();
         let mut name = String::new();
         while let Some(c) = peekable.peek() {
             let c = **c;

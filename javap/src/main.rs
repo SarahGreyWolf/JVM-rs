@@ -11,7 +11,7 @@ use jloader::{
     access_flags::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags},
     attributes::AttributeInfo,
     class_file::{self, MethodInfo},
-    constants::ConstantPool,
+    constants::PoolConstants,
     descriptors::FieldDescriptor,
 };
 
@@ -93,14 +93,14 @@ fn output_class(
 
     for attributes in &class.attributes {
         if let AttributeInfo::SourceFile(sf) = attributes {
-            if let ConstantPool::Utf8(title) = &class.constant_pool[sf.sourcefile_index as usize] {
+            if let PoolConstants::Utf8(title) = &class.constant_pool[sf.sourcefile_index as usize] {
                 writeln!(output_buffer, "Compiled from \"{}\"", String::from(title))?;
             }
         }
     }
     let this_class_name =
-        if let ConstantPool::Class(c) = &class.constant_pool[class.this_class as usize] {
-            if let ConstantPool::Utf8(cn) = &class.constant_pool[c.name_index as usize] {
+        if let PoolConstants::Class(c) = &class.constant_pool[class.this_class as usize] {
+            if let PoolConstants::Utf8(cn) = &class.constant_pool[c.name_index as usize] {
                 String::from(cn)
             } else {
                 unreachable!("Could not get class name from index {}", c.name_index);
@@ -147,7 +147,7 @@ fn output_class(
         {
             continue;
         }
-        let field_name = if let ConstantPool::Utf8(field_name) =
+        let field_name = if let PoolConstants::Utf8(field_name) =
             &class.constant_pool[field.name_index as usize]
         {
             String::from(field_name)
@@ -182,14 +182,14 @@ fn output_class(
         for attrib in field.clone().attributes {
             let field_def = if let AttributeInfo::ConstantValue(c) = attrib {
                 match class.constant_pool[c.constantvalue_index as usize] {
-                    ConstantPool::Utf8(_) => todo!(),
-                    ConstantPool::Integer(_) => todo!(),
-                    ConstantPool::Float(_) => todo!(),
-                    ConstantPool::Long(_) => todo!(),
-                    ConstantPool::Double(_) => todo!(),
-                    ConstantPool::Class(_) => todo!(),
-                    ConstantPool::String(ref s) => {
-                        if let ConstantPool::Utf8(ref s) =
+                    PoolConstants::Utf8(_) => todo!(),
+                    PoolConstants::Integer(_) => todo!(),
+                    PoolConstants::Float(_) => todo!(),
+                    PoolConstants::Long(_) => todo!(),
+                    PoolConstants::Double(_) => todo!(),
+                    PoolConstants::Class(_) => todo!(),
+                    PoolConstants::String(ref s) => {
+                        if let PoolConstants::Utf8(ref s) =
                             class.constant_pool[s.string_index as usize]
                         {
                             if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
@@ -210,17 +210,17 @@ fn output_class(
                             );
                         }
                     }
-                    ConstantPool::Fieldref(_) => todo!(),
-                    ConstantPool::Methodref(_) => todo!(),
-                    ConstantPool::InterfaceMethodref(_) => todo!(),
-                    ConstantPool::NameAndType(_) => todo!(),
-                    ConstantPool::MethodHandle(_) => todo!(),
-                    ConstantPool::MethodType(_) => todo!(),
-                    ConstantPool::Dynamic(_) => todo!(),
-                    ConstantPool::InvokeDynamic(_) => todo!(),
-                    ConstantPool::Module(_) => todo!(),
-                    ConstantPool::Package(_) => todo!(),
-                    ConstantPool::Unknown => todo!(),
+                    PoolConstants::Fieldref(_) => todo!(),
+                    PoolConstants::Methodref(_) => todo!(),
+                    PoolConstants::InterfaceMethodref(_) => todo!(),
+                    PoolConstants::NameAndType(_) => todo!(),
+                    PoolConstants::MethodHandle(_) => todo!(),
+                    PoolConstants::MethodType(_) => todo!(),
+                    PoolConstants::Dynamic(_) => todo!(),
+                    PoolConstants::InvokeDynamic(_) => todo!(),
+                    PoolConstants::Module(_) => todo!(),
+                    PoolConstants::Package(_) => todo!(),
+                    PoolConstants::Unknown => todo!(),
                 }
             } else if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
                 format!("{access_flags} {name} {field_name};")
@@ -260,7 +260,7 @@ fn output_class(
             continue;
         }
         let method_name =
-            if let ConstantPool::Utf8(name) = &class.constant_pool[method.name_index as usize] {
+            if let PoolConstants::Utf8(name) = &class.constant_pool[method.name_index as usize] {
                 let mut name = String::from(name);
                 if name == "<init>" {
                     name = this_class_name.clone();
@@ -328,7 +328,7 @@ fn output_class(
 fn disassemble(
     this_class_name: &str,
     method: &MethodInfo,
-    constant_pool: &[ConstantPool],
+    constant_pool: &[PoolConstants],
     output_buffer: &mut Vec<u8>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     for attrib in &method.attributes {
@@ -443,36 +443,31 @@ fn disassemble(
                     }
                 }
                 if result_pool_index > -1 {
-                    write!(
-                        output_buffer,
-                        "{:1$}",
-                        "",
-                        (constant_pool.len().checked_ilog10().unwrap_or(0) as usize)
                     )?;
                     let constant = &constant_pool[result_pool_index as usize];
                     if !get_data_from_ref(this_class_name, constant_pool, constant, output_buffer)?
                     {
                         match constant {
-                            ConstantPool::String(string) => {
+                            PoolConstants::String(string) => {
                                 write!(output_buffer, "// String ")?;
-                                if let ConstantPool::Utf8(string) =
+                                if let PoolConstants::Utf8(string) =
                                     &constant_pool[string.string_index as usize]
                                 {
                                     let string = String::from(string);
                                     write!(output_buffer, "{string}")?;
                                 }
                             }
-                            ConstantPool::Class(class) => {
+                            PoolConstants::Class(class) => {
                                 write!(output_buffer, "// class ")?;
-                                if let ConstantPool::Utf8(string) =
+                                if let PoolConstants::Utf8(string) =
                                     &constant_pool[class.name_index as usize]
                                 {
                                     let string = String::from(string);
                                     write!(output_buffer, "{string}")?;
                                 }
                             }
-                            ConstantPool::InvokeDynamic(dynamic) => {
-                                if let ConstantPool::NameAndType(nam_typ) =
+                            PoolConstants::InvokeDynamic(dynamic) => {
+                                if let PoolConstants::NameAndType(nam_typ) =
                                     &constant_pool[dynamic.name_and_type_index as usize]
                                 {
                                     let name = nam_typ.get_name(constant_pool)?;
@@ -499,26 +494,26 @@ fn disassemble(
 
 fn get_data_from_ref(
     this_class_name: &str,
-    constant_pool: &[ConstantPool],
-    r#type: &ConstantPool,
+    constant_pool: &[PoolConstants],
+    r#type: &PoolConstants,
     output_buffer: &mut Vec<u8>,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     let mut affected = false;
     let mut class_index = 0;
     let mut name_type_index = 0;
-    if let ConstantPool::Methodref(meth_ref) = r#type {
+    if let PoolConstants::Methodref(meth_ref) = r#type {
         class_index = meth_ref.class_index;
         name_type_index = meth_ref.name_and_type_index;
         write!(output_buffer, "// Method ")?;
         affected = true;
     }
-    if let ConstantPool::Fieldref(field_ref) = r#type {
+    if let PoolConstants::Fieldref(field_ref) = r#type {
         class_index = field_ref.class_index;
         name_type_index = field_ref.name_and_type_index;
         write!(output_buffer, "// Field ")?;
         affected = true;
     }
-    if let ConstantPool::InterfaceMethodref(int_meth_ref) = r#type {
+    if let PoolConstants::InterfaceMethodref(int_meth_ref) = r#type {
         class_index = int_meth_ref.class_index;
         name_type_index = int_meth_ref.name_and_type_index;
         write!(output_buffer, "// InterfaceMethod ")?;
@@ -528,9 +523,9 @@ fn get_data_from_ref(
         return Ok(affected);
     }
     let class_const = &constant_pool[class_index as usize];
-    if let ConstantPool::Class(c) = class_const {
+    if let PoolConstants::Class(c) = class_const {
         let class_name = &constant_pool[c.name_index as usize];
-        if let ConstantPool::Utf8(name) = class_name {
+        if let PoolConstants::Utf8(name) = class_name {
             let name = String::from(name);
             if name != this_class_name {
                 write!(output_buffer, "{name}.")?;
@@ -539,7 +534,7 @@ fn get_data_from_ref(
         }
     }
     let name_type_const = &constant_pool[name_type_index as usize];
-    if let ConstantPool::NameAndType(nt) = name_type_const {
+    if let PoolConstants::NameAndType(nt) = name_type_const {
         let name = nt.get_name(constant_pool)?;
         if name == "<init>" {
             write!(output_buffer, "\"{name}\":")?;

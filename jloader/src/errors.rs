@@ -4,7 +4,7 @@ pub mod class_format_check {
     use std::error::Error;
     use std::fmt::Display;
 
-    use crate::constants::ConstantPool;
+    use crate::constants::PoolConstants;
 
     #[derive(Debug)]
     pub enum FormatCause {
@@ -13,7 +13,7 @@ pub mod class_format_check {
         InvalidIndex(u16),
         InvalidDescriptor(String),
         InvalidReferenceKind(u8),
-        InvalidConstant(ConstantPool),
+        InvalidConstant(PoolConstants),
         MissingAttribute,
         TooManyFlags,
     }
@@ -65,12 +65,12 @@ pub mod class_loading {
     use std::error::Error;
     use std::fmt::Display;
 
-    use crate::constants::ConstantPool;
+    use crate::constants::PoolConstants;
 
     #[derive(Debug)]
     pub enum LoadingCause {
         InvalidConstantTag(u8),
-        InvalidAttributeNameIndex(ConstantPool),
+        InvalidAttributeNameIndex(PoolConstants),
         InvalidTargetInfoValue(u8),
         InvalidTargetTypeValue(u8),
         InvalidTypePathKind(u8),

@@ -6,7 +6,7 @@ use std::{error::Error, io::Read};
 
 use jloader::attributes::AttributeInfo;
 use jloader::class_file::ClassLoc;
-use jloader::{class_file::Class, constants::ConstantPool};
+use jloader::{class_file::Class, constants::PoolConstants};
 
 use crate::ops::mnemonics::Mnemonic;
 use crate::ops::Instruction;
@@ -274,7 +274,6 @@ pub struct Thread {
     // Reference to the VM Heap
     heap_ref: Arc<Mutex<Vec<u8>>>,
     method_area_ref: Arc<Mutex<Vec<ClassLoc>>>,
-    runtime_pool: Vec<ConstantPool>,
 }
 
 pub struct VM {

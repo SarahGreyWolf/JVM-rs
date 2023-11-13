@@ -7,7 +7,7 @@ use std::{error::Error, io::Cursor};
 use byteorder::{ReadBytesExt, BE};
 
 use crate::access_flags::{module_flags, ParameterAccessFlags};
-use crate::constants::ConstantPool;
+use crate::constants::PoolConstants;
 
 use crate::errors::class_loading::{LoadingCause, LoadingError};
 
@@ -243,7 +243,7 @@ impl Code {
     pub fn new(
         attribute_name_index: u16,
         attribute_length: u32,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
         cursor: &mut Cursor<&[u8]>,
         version: u16,
     ) -> Result<Code, Box<dyn Error>> {
@@ -737,7 +737,7 @@ impl Exceptions {
     pub fn new(
         attribute_name_index: u16,
         attribute_length: u32,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
         cursor: &mut Cursor<&[u8]>,
     ) -> Result<Exceptions, Box<dyn Error>> {
         let exception_count = cursor.read_u16::<BE>()?;
@@ -749,7 +749,7 @@ impl Exceptions {
                 let mut exceptions = Vec::with_capacity(exception_count as usize);
                 for _ in 0..exceptions.capacity() {
                     let index = cursor.read_u16::<BE>()?;
-                    if let ConstantPool::Class(class) = &constant_pool[index as usize] {
+                    if let PoolConstants::Class(class) = &constant_pool[index as usize] {
                         exceptions.push(index);
                     } else {
                         unreachable!("Index into ConstantPool was not a Class Constant");
@@ -811,23 +811,23 @@ impl InnerClassInfo {
         outer_info: u16,
         inner_name: u16,
         inner_access: u16,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
     ) -> InnerClassInfo {
-        if let ConstantPool::Class(_) = &constant_pool[inner_info as usize] {
+        if let PoolConstants::Class(_) = &constant_pool[inner_info as usize] {
         } else {
             unreachable!(
                 "inner_class_info_index {} did not reference a class object",
                 inner_info
             );
         }
-        if let ConstantPool::Class(_) = &constant_pool[outer_info as usize] {
+        if let PoolConstants::Class(_) = &constant_pool[outer_info as usize] {
         } else {
             unreachable!(
                 "outer_class_info_index {} did not reference a class object",
                 inner_info
             );
         }
-        if let ConstantPool::Utf8(_) = &constant_pool[inner_name as usize] {
+        if let PoolConstants::Utf8(_) = &constant_pool[inner_name as usize] {
         } else {
             unreachable!(
                 "inner_name_index {} did not reference a utf8 object",
@@ -867,7 +867,7 @@ impl InnerClasses {
     pub fn new(
         attribute_name_index: u16,
         attribute_length: u32,
-        constant_pool: &[ConstantPool],
+        constant_pool: &[PoolConstants],
         cursor: &mut Cursor<&[u8]>,
     ) -> Result<InnerClasses, Box<dyn Error>> {
         let classes_size = cursor.read_u16::<BE>()?;
@@ -3059,7 +3059,7 @@ struct RecordComponentInfo {
 
 impl RecordComponentInfo {
     pub fn new(
-        constant_pool: &[crate::constants::ConstantPool],
+        constant_pool: &[crate::constants::PoolConstants],
         version: Option<u16>,
         cursor: &mut Cursor<&[u8]>,
     ) -> Result<RecordComponentInfo, Box<dyn Error>> {
@@ -3103,7 +3103,7 @@ impl Record {
         attribute_name_index: u16,
         attribute_length: u32,
         components_count: u16,
-        constant_pool: &[crate::constants::ConstantPool],
+        constant_pool: &[crate::constants::PoolConstants],
         version: Option<u16>,
         cursor: &mut Cursor<&[u8]>,
     ) -> Result<Record, Box<dyn Error>> {
@@ -3177,7 +3177,7 @@ pub struct Unknown {
 }
 
 pub fn read_attributes(
-    constant_pool: &[crate::constants::ConstantPool],
+    constant_pool: &[crate::constants::PoolConstants],
     attributes: &mut Vec<AttributeInfo>,
     cursor: &mut Cursor<&[u8]>,
     version: Option<u16>,
@@ -3187,7 +3187,7 @@ pub fn read_attributes(
         let name_index = cursor.read_u16::<BE>()?;
         let name = &constant_pool[name_index as usize];
         let length = cursor.read_u32::<BE>()?;
-        if let ConstantPool::Utf8(n) = name {
+        if let PoolConstants::Utf8(n) = name {
             let attribute = match String::from(n).as_str() {
                 "ConstantValue" => AttributeInfo::ConstantValue(ConstantValue::new(
                     name_index,
