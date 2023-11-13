@@ -2,7 +2,8 @@ pub mod mnemonics;
 
 use std::io::Cursor;
 
-use crate::vm::{FrameValues, StackFrame};
+use crate::stack_frame::StackFrame;
+use crate::vm::FrameValues;
 use byteorder::ReadBytesExt;
 use jloader::{
     class_file::ClassLoc,
@@ -2116,7 +2117,7 @@ pub fn getstatic(frame: &mut StackFrame, inst: Instruction) {
     };
     let index: u16 = ((*byte1 as u16) << 8) | *byte2 as u16;
 
-    let Some(ConstantPool::Fieldref(field)) = frame.pool.get(index as usize) else {
+    let Some(PoolConstants::Fieldref(field)) = frame.pool.get(index as usize) else {
         panic!("Index {index} into Runtime Pool does not exist or is not a FieldRef");
     };
 }
