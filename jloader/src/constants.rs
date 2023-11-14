@@ -27,9 +27,11 @@ pub enum PoolConstants {
     InvokeDynamic(InvokeDynamic),
     Module(Module),
     Package(Package),
+    LongOrDoubleExtra,
     Unknown,
 }
 
+#[derive(PartialEq)]
 #[repr(u8)]
 pub enum Tags {
     Utf8 = 1,
@@ -187,30 +189,6 @@ pub struct Long {
      *  ((long) high_bytes << 32) + low_bytes\
      *  where the bytes of each of high_bytes and low_bytes are stored in big-endian\
      *  (high byte first) order.
-     *
-     *  The high_bytes and low_bytes items of the CONSTANT_Double_info
-     *  structure together represent the double value in IEEE 754 binary64 floating-
-     *  point format (§2.3.2). The bytes of each item are stored in big-endian (high
-     *  byte first) order.
-     *  The value represented by the CONSTANT_Double_info structure is determined
-     *  as follows. The high_bytes and low_bytes items are converted into the long
-     *  constant bits, which is equal to\
-     *  ((long) high_bytes << 32) + low_bytes\
-     *  Then:\
-     *  • If bits is 0x7ff0000000000000L, the double value will be positive infinity.\
-     *  • If bits is 0xfff0000000000000L, the double value will be negative infinity.\
-     *  • If bits is in the range 0x7ff0000000000001L through 0x7fffffffffffffffL\
-     *  or in the range 0xfff0000000000001L through 0xffffffffffffffffL, the
-     *  double value will be NaN.\
-     *  • In all other cases, let s, e, and m be three values that might be computed from\
-     *  bits:\
-     *  int s = ((bits >> 63) == 0) ? 1 : -1;\
-     *  int e = (int)((bits >> 52) & 0x7ffL);\
-     *  long m = (e == 0) ?\
-     *  (bits & 0xfffffffffffffL) << 1 :\
-     *  (bits & 0xfffffffffffffL) | 0x10000000000000L;\
-     *  Then the floating-point value equals the double value of the mathematical
-     *  expression s · m · 2e-1075.
      */
     pub high_bytes: u32,
     /// **low_bytes**
@@ -867,7 +845,12 @@ pub fn read_constant_pool(
     pool: &mut Vec<PoolConstants>,
     cursor: &mut Cursor<&[u8]>,
 ) -> Result<(), Box<dyn Error>> {
-    for _ in 0..pool.capacity() {
+    let mut index = 0;
+    let mut end = pool.capacity();
+    loop {
+        if index >= end {
+            break;
+        }
         let tag = cursor.read_u8()?;
         pool.push(match Tags::from(tag) {
             Tags::Utf8 => PoolConstants::Utf8(Utf8::new(cursor)),
@@ -917,12 +900,18 @@ pub fn read_constant_pool(
             Tags::Module => PoolConstants::Module(Module::new(cursor.read_u16::<BE>()?)),
             Tags::Package => PoolConstants::Package(Package::new(cursor.read_u16::<BE>()?)),
             _ => {
+                dbg!(&pool);
                 return Err(Box::new(LoadingError::new(
                     LoadingCause::InvalidConstantTag(tag),
                     &format!("Cursor Position: {:#04X?}", cursor.position() - 1),
-                )))
+                )));
             }
         });
+        if Tags::from(tag) == Tags::Double || Tags::from(tag) == Tags::Long {
+            pool.push(PoolConstants::LongOrDoubleExtra);
+            end -= 1;
+        }
+        index += 1;
     }
     Ok(())
 }

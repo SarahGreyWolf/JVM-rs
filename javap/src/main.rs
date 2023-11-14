@@ -220,6 +220,7 @@ fn output_class(
                     PoolConstants::InvokeDynamic(_) => todo!(),
                     PoolConstants::Module(_) => todo!(),
                     PoolConstants::Package(_) => todo!(),
+                    PoolConstants::LongOrDoubleExtra => String::new(),
                     PoolConstants::Unknown => todo!(),
                 }
             } else if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
@@ -438,12 +439,11 @@ fn disassemble(
                     write!(output_buffer, " {destination}",)?;
                 }
                 if !result_imm.is_empty() {
-                    for imm in result_imm {
+                    for imm in &result_imm {
                         write!(output_buffer, " {imm}")?;
                     }
                 }
                 if result_pool_index > -1 {
-                    )?;
                     let constant = &constant_pool[result_pool_index as usize];
                     if !get_data_from_ref(this_class_name, constant_pool, constant, output_buffer)?
                     {
