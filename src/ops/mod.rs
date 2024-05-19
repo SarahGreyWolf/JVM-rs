@@ -2102,7 +2102,25 @@ pub fn frem(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn freturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn fstore(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn fstore_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn fstore_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn fstore_1(frame: &mut StackFrame, inst: Instruction) {
+    match frame.stack.pop() {
+        Some(FrameValues::Float(float)) => {
+            if let Some(mut local) = frame.locals.get_mut(1) {
+                *local = FrameValues::Float(float);
+            } else {
+                frame.locals.insert(1, FrameValues::Float(float));
+            }
+        }
+        Some(FrameValues::Double(double)) => {
+            if let Some(mut local) = frame.locals.get_mut(1) {
+                *local = FrameValues::Double(double);
+            } else {
+                frame.locals.insert(1, FrameValues::Double(double));
+            }
+        }
+        _ => panic!("Frame stack was empty or top was not a float!"),
+    }
+}
 pub fn fstore_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn fstore_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn fsub(frame: &mut StackFrame, inst: Instruction) { todo!() }
@@ -2192,7 +2210,7 @@ pub fn iload(frame: &mut StackFrame, inst: Instruction) {
     frame.stack.push(FrameValues::Int(*local));
 }
 pub fn iload_0(frame: &mut StackFrame, inst: Instruction) {
-    let Some(FrameValues::Int(local)) = frame.locals.get(0) else {
+    let Some(FrameValues::Int(local)) = frame.locals.first() else {
         panic!("Frame local[0] does not exist");
     };
     frame.stack.push(FrameValues::Int(*local));

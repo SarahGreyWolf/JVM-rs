@@ -115,7 +115,7 @@ impl StackFrame {
                 Mnemonic::Freturn => todo!(),
                 Mnemonic::Fstore => todo!(),
                 Mnemonic::Fstore0 => todo!(),
-                Mnemonic::Fstore1 => todo!(),
+                Mnemonic::Fstore1 => crate::ops::fstore_1(self, instruction),
                 Mnemonic::Fstore2 => todo!(),
                 Mnemonic::Fstore3 => todo!(),
                 Mnemonic::Fsub => todo!(),
