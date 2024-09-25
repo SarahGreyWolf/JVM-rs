@@ -422,7 +422,7 @@ impl Class {
         };
         //FIXME: This isn't ideal, is_empty is nightly and requires a feature flag
         // • The class file must not be truncated or have extra bytes at the end.
-        if !cursor.is_empty() {
+        if !cursor.split().1.is_empty() {
             return Err(Box::new(FormatError::new(
                 FormatCause::ExtraBytes,
                 "class file has leftover bytes",

@@ -1,5 +1,5 @@
 //FIXME: This isn't ideal
-#![feature(cursor_remaining)]
+#![feature(cursor_split)]
 
 pub mod access_flags;
 /// [Attributes](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A1244%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
