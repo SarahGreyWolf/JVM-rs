@@ -8,30 +8,34 @@ use jloader::{class_file::ClassLoc, constants::PoolConstants};
 
 use crate::{
     ops::{mnemonics::Mnemonic, Instruction},
-    vm::FrameValues,
+    runtime_pool::RuntimeConstant,
+    vm::{FrameValues, Thread, VM},
 };
 
-// https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A45%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C250%2Cnull%5D
-#[derive(Debug)]
+/// https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A45%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C250%2Cnull%5D
+#[derive(Debug, Clone)]
 pub struct StackFrame {
     pub pc: Option<u64>,
     pub code: Vec<u8>,
-    // https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A802%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C165%2Cnull%5D
+    /// https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A802%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C165%2Cnull%5D
     pub locals: Vec<FrameValues>,
-    // https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A814%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C267%2Cnull%5D
+    /// https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A814%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C267%2Cnull%5D
     pub stack: Vec<FrameValues>,
-    // https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A4314%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C325%2Cnull%5D
-    pub pool: Vec<PoolConstants>,
+    /// https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2809%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C210.7%2Cnull%5D
+    pub pool: Vec<RuntimeConstant>,
+    pub const_pool: Vec<PoolConstants>,
+    pub thread_id: usize,
 }
 
 impl StackFrame {
     // Takes an optional callee that is a mutable reference to the caller StackFrame
     pub fn run(
         &mut self,
+        vm: &mut VM,
         class_path: &Path,
         heap_ref: Arc<Mutex<Vec<u8>>>,
         method_area_ref: Arc<Mutex<Vec<ClassLoc>>>,
-        callee: Option<&mut StackFrame>,
+        mut callee: Option<&mut StackFrame>,
     ) -> Result<(), Box<dyn Error>> {
         loop {
             let instruction = Instruction::from_frame(self)?;
@@ -56,7 +60,7 @@ impl StackFrame {
                 Mnemonic::Athrow => todo!(),
                 Mnemonic::Baload => todo!(),
                 Mnemonic::Bastore => todo!(),
-                Mnemonic::Bipush => crate::ops::bipush(self, instruction),
+                Mnemonic::Bipush => crate::ops::bipush(vm, self, instruction),
                 Mnemonic::Caload => todo!(),
                 Mnemonic::Castore => todo!(),
                 Mnemonic::Checkcast => todo!(),
@@ -115,7 +119,6 @@ impl StackFrame {
                 Mnemonic::Freturn => todo!(),
                 Mnemonic::Fstore => todo!(),
                 Mnemonic::Fstore0 => todo!(),
-                Mnemonic::Fstore1 => crate::ops::fstore_1(self, instruction),
                 Mnemonic::Fstore2 => todo!(),
                 Mnemonic::Fstore3 => todo!(),
                 Mnemonic::Fsub => todo!(),
@@ -129,17 +132,31 @@ impl StackFrame {
                 Mnemonic::I2f => todo!(),
                 Mnemonic::I2l => todo!(),
                 Mnemonic::I2s => todo!(),
-                Mnemonic::Iadd => crate::ops::iadd(self, instruction),
+                Mnemonic::Iadd => crate::ops::iadd(vm, self, instruction),
                 Mnemonic::Iaload => todo!(),
                 Mnemonic::Iand => todo!(),
                 Mnemonic::Iastore => todo!(),
-                Mnemonic::IconstM1 => crate::ops::iconst_m1(self, instruction),
-                Mnemonic::Iconst0 => crate::ops::iconst_0(self, instruction),
-                Mnemonic::Iconst1 => crate::ops::iconst_1(self, instruction),
-                Mnemonic::Iconst2 => crate::ops::iconst_2(self, instruction),
-                Mnemonic::Iconst3 => crate::ops::iconst_3(self, instruction),
-                Mnemonic::Iconst4 => crate::ops::iconst_4(self, instruction),
-                Mnemonic::Iconst5 => crate::ops::iconst_5(self, instruction),
+                Mnemonic::IconstM1 => {
+                    crate::ops::iconst_m1(vm, self, instruction)
+                }
+                Mnemonic::Iconst0 => {
+                    crate::ops::iconst_0(vm, self, instruction)
+                }
+                Mnemonic::Iconst1 => {
+                    crate::ops::iconst_1(vm, self, instruction)
+                }
+                Mnemonic::Iconst2 => {
+                    crate::ops::iconst_2(vm, self, instruction)
+                }
+                Mnemonic::Iconst3 => {
+                    crate::ops::iconst_3(vm, self, instruction)
+                }
+                Mnemonic::Iconst4 => {
+                    crate::ops::iconst_4(vm, self, instruction)
+                }
+                Mnemonic::Iconst5 => {
+                    crate::ops::iconst_5(vm, self, instruction)
+                }
                 Mnemonic::Idiv => todo!(),
                 Mnemonic::IfAcmpeq => todo!(),
                 Mnemonic::IfAcmpne => todo!(),
@@ -160,8 +177,8 @@ impl StackFrame {
                 Mnemonic::Iinc => todo!(),
                 Mnemonic::Iload => todo!(),
                 Mnemonic::Iload0 => todo!(),
-                Mnemonic::Iload1 => crate::ops::iload_1(self, instruction),
-                Mnemonic::Iload2 => crate::ops::iload_2(self, instruction),
+                Mnemonic::Iload1 => crate::ops::iload_1(vm, self, instruction),
+                Mnemonic::Iload2 => crate::ops::iload_2(vm, self, instruction),
                 Mnemonic::Iload3 => todo!(),
                 Mnemonic::Imul => todo!(),
                 Mnemonic::Ineg => todo!(),
@@ -178,9 +195,15 @@ impl StackFrame {
                 Mnemonic::Ishr => todo!(),
                 Mnemonic::Istore => todo!(),
                 Mnemonic::Istore0 => todo!(),
-                Mnemonic::Istore1 => crate::ops::istore_1(self, instruction),
-                Mnemonic::Istore2 => crate::ops::istore_2(self, instruction),
-                Mnemonic::Istore3 => crate::ops::istore_3(self, instruction),
+                Mnemonic::Istore1 => {
+                    crate::ops::istore_1(vm, self, instruction)
+                }
+                Mnemonic::Istore2 => {
+                    crate::ops::istore_2(vm, self, instruction)
+                }
+                Mnemonic::Istore3 => {
+                    crate::ops::istore_3(vm, self, instruction)
+                }
                 Mnemonic::Isub => todo!(),
                 Mnemonic::Iushr => todo!(),
                 Mnemonic::Ixor => todo!(),
@@ -234,13 +257,12 @@ impl StackFrame {
                 Mnemonic::Ret => todo!(),
                 // FIXME: This should return back to the previous StackFrame (if there is one)
                 Mnemonic::Return => {
-                    dbg!(&self.stack);
-                    dbg!(&self.locals);
+                    crate::ops::r#return(vm, self, instruction);
                     break;
                 }
                 Mnemonic::Saload => todo!(),
                 Mnemonic::Satore => todo!(),
-                Mnemonic::Sipush => crate::ops::sipush(self, instruction),
+                Mnemonic::Sipush => crate::ops::sipush(vm, self, instruction),
                 Mnemonic::Swap => todo!(),
                 Mnemonic::Tableswitch => todo!(),
                 Mnemonic::WideOp => todo!(),

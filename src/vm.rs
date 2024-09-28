@@ -10,6 +10,7 @@ use jloader::{class_file::Class, constants::PoolConstants};
 
 use crate::ops::mnemonics::Mnemonic;
 use crate::ops::Instruction;
+use crate::runtime_pool::{self, RuntimeConstant, SymbolicRef};
 use crate::stack_frame::StackFrame;
 
 // Where in the heap that method space sits
@@ -17,7 +18,7 @@ static METHOD_SPACE: usize = 1024 * 1024 * 5;
 
 // https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A802%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C165%2Cnull%5D
 // https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A62%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C286%2Cnull%5D
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum FrameValues {
     Boolean(bool),
     Byte(i8),
@@ -25,36 +26,40 @@ pub enum FrameValues {
     Short(i16),
     Int(i32),
     Float(f32),
-    Reference(u64),
+    Reference(SymbolicRef),
     ReturnAddress(u64),
     Long(i64),
     Double(f64),
+    NaN,
 }
 
 // https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2220%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C487%2Cnull%5D
+#[derive(Clone)]
 struct NativeStack {}
 
+#[derive(Clone)]
 pub struct Thread {
     // Stack
     // Can be variable length with min & max or can be fixed
     pub frames: Vec<StackFrame>,
-    active_frame: usize,
-    native_stack: Vec<NativeStack>,
+    pub active_frame: usize,
+    pub native_stack: Vec<NativeStack>,
     // Reference to the VM Heap
-    heap_ref: Arc<Mutex<Vec<u8>>>,
-    method_area_ref: Arc<Mutex<Vec<ClassLoc>>>,
+    pub heap_ref: Arc<Mutex<Vec<u8>>>,
+    pub method_area_ref: Arc<Mutex<Vec<ClassLoc>>>,
 }
 
 pub struct VM {
     pub threads: Vec<Thread>,
     // https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A38%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C345%2Cnull%5D
-    heap: Arc<Mutex<Vec<u8>>>,
+    pub heap: Arc<Mutex<Vec<u8>>>,
     // https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2226%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C551%2Cnull%5D
     // This is a reference into the heap that stores the Class
     // This might need some kind of ID for identifying the class maybe?
     // TODO: Handle garbage collecting this
     //       Kinda thinking something like a time when the class was last accessed or something
-    method_area: Arc<Mutex<Vec<ClassLoc>>>,
+    pub method_area: Arc<Mutex<Vec<ClassLoc>>>,
+    pub class_path: Option<PathBuf>,
 }
 
 pub struct VMSettings {

@@ -1980,10 +1980,12 @@ fn get_operand(frame: &mut StackFrame) -> u8 {
 
 pub fn aaload(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn aastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn aconst_null(frame: &mut StackFrame, inst: Instruction) {
-    frame.stack.push(FrameValues::Reference(0));
+pub fn aconst_null(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    frame
+        .stack
+        .push(FrameValues::Reference(runtime_pool::SymbolicRef::Null));
 }
-pub fn aload(frame: &mut StackFrame, inst: Instruction) {
+pub fn aload(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let OperandType::VarIndex(index) = inst.get_const_operands()[0] else {
         panic!("Operand type for aload was not a var index");
     };
@@ -1994,32 +1996,32 @@ pub fn aload(frame: &mut StackFrame, inst: Instruction) {
         panic!("Local value at [{index}] was not a reference");
     }
 }
-pub fn aload_0(frame: &mut StackFrame, inst: Instruction) {
-    let local = frame.locals[0];
+pub fn aload_0(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let local = frame.locals[0].clone();
     if let FrameValues::Reference(_) = local {
         frame.stack.push(local);
     } else {
         panic!("Local value at [0] was not a reference");
     }
 }
-pub fn aload_1(frame: &mut StackFrame, inst: Instruction) {
-    let local = frame.locals[1];
+pub fn aload_1(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let local = frame.locals[1].clone();
     if let FrameValues::Reference(_) = local {
         frame.stack.push(local);
     } else {
         panic!("Local value at [1] was not a reference");
     }
 }
-pub fn aload_2(frame: &mut StackFrame, inst: Instruction) {
-    let local = frame.locals[2];
+pub fn aload_2(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let local = frame.locals[2].clone();
     if let FrameValues::Reference(_) = local {
         frame.stack.push(local);
     } else {
         panic!("Local value at [2] was not a reference");
     }
 }
-pub fn aload_3(frame: &mut StackFrame, inst: Instruction) {
-    let local = frame.locals[3];
+pub fn aload_3(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let local = frame.locals[3].clone();
     if let FrameValues::Reference(_) = local {
         frame.stack.push(local);
     } else {
@@ -2037,7 +2039,7 @@ pub fn astore_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn athrow(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn baload(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn bastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn bipush(frame: &mut StackFrame, inst: Instruction) {
+pub fn bipush(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let operands = inst.get_const_operands();
     let OperandType::Immediate(byte) = operands[0] else {
         panic!("Operand [0] for bipush was not an immediate");
@@ -2102,7 +2104,6 @@ pub fn frem(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn freturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn fstore(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn fstore_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn fstore_1(frame: &mut StackFrame, inst: Instruction) {
     match frame.stack.pop() {
         Some(FrameValues::Float(float)) => {
             if let Some(mut local) = frame.locals.get_mut(1) {
@@ -2160,7 +2161,7 @@ pub fn iadd(frame: &mut StackFrame, inst: Instruction) {
 pub fn iaload(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn iand(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn iastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn iconst_m1(frame: &mut StackFrame, inst: Instruction) {
+pub fn iconst_m1(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     frame.stack.push(FrameValues::Int(-1));
 }
 pub fn iconst_0(frame: &mut StackFrame, inst: Instruction) {
@@ -2199,7 +2200,7 @@ pub fn ifle(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ifnonnull(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ifnull(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn iinc(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn iload(frame: &mut StackFrame, inst: Instruction) {
+pub fn iload(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let operands = inst.get_const_operands();
     let OperandType::VarIndex(index) = operands[0] else {
         panic!("Operand [0] for iload was not a var index");
@@ -2209,25 +2210,25 @@ pub fn iload(frame: &mut StackFrame, inst: Instruction) {
     };
     frame.stack.push(FrameValues::Int(*local));
 }
-pub fn iload_0(frame: &mut StackFrame, inst: Instruction) {
+pub fn iload_0(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let Some(FrameValues::Int(local)) = frame.locals.first() else {
         panic!("Frame local[0] does not exist");
     };
     frame.stack.push(FrameValues::Int(*local));
 }
-pub fn iload_1(frame: &mut StackFrame, inst: Instruction) {
+pub fn iload_1(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let Some(FrameValues::Int(local)) = frame.locals.get(1) else {
         panic!("Frame local[1] does not exist");
     };
     frame.stack.push(FrameValues::Int(*local));
 }
-pub fn iload_2(frame: &mut StackFrame, inst: Instruction) {
+pub fn iload_2(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let Some(FrameValues::Int(local)) = frame.locals.get(2) else {
         panic!("Frame local[2] does not exist");
     };
     frame.stack.push(FrameValues::Int(*local));
 }
-pub fn iload_3(frame: &mut StackFrame, inst: Instruction) {
+pub fn iload_3(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let Some(FrameValues::Int(local)) = frame.locals.get(3) else {
         panic!("Frame local[3] does not exist");
     };
@@ -2246,7 +2247,7 @@ pub fn irem(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ireturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ishl(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ishr(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn istore(frame: &mut StackFrame, inst: Instruction) {
+pub fn istore(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let operands = inst.get_const_operands();
     let OperandType::VarIndex(index) = operands[0] else {
         panic!("Operand [0] for istore was not a var index");
@@ -2259,7 +2260,7 @@ pub fn istore(frame: &mut StackFrame, inst: Instruction) {
     };
     *local = FrameValues::Int(top);
 }
-pub fn istore_0(frame: &mut StackFrame, inst: Instruction) {
+pub fn istore_0(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let Some(FrameValues::Int(top)) = frame.stack.pop() else {
         panic!("Frame stack was empty or not an int!");
     };
@@ -2269,7 +2270,7 @@ pub fn istore_0(frame: &mut StackFrame, inst: Instruction) {
         frame.locals.insert(0, FrameValues::Int(top));
     }
 }
-pub fn istore_1(frame: &mut StackFrame, inst: Instruction) {
+pub fn istore_1(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let Some(FrameValues::Int(top)) = frame.stack.pop() else {
         panic!("Frame stack was empty or not an int!");
     };
@@ -2279,7 +2280,7 @@ pub fn istore_1(frame: &mut StackFrame, inst: Instruction) {
         frame.locals.insert(1, FrameValues::Int(top));
     }
 }
-pub fn istore_2(frame: &mut StackFrame, inst: Instruction) {
+pub fn istore_2(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let Some(FrameValues::Int(top)) = frame.stack.pop() else {
         panic!("Frame stack was empty or not an int!");
     };
@@ -2289,7 +2290,7 @@ pub fn istore_2(frame: &mut StackFrame, inst: Instruction) {
         frame.locals.insert(2, FrameValues::Int(top));
     }
 }
-pub fn istore_3(frame: &mut StackFrame, inst: Instruction) {
+pub fn istore_3(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let Some(FrameValues::Int(top)) = frame.stack.pop() else {
         panic!("Frame stack was empty or not an int!");
     };
@@ -2350,7 +2351,7 @@ pub fn pop2(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn putfield(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn putstatic(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ret(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn r#return(frame: &mut StackFrame, inst: Instruction) {
+pub fn r#return(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     /*
        The current method must have return type void. If the
        current method is a synchronized method, the monitor entered
@@ -2362,11 +2363,13 @@ pub fn r#return(frame: &mut StackFrame, inst: Instruction) {
        The interpreter then returns control to the invoker of the method,
        reinstating the frame of the invoker.
     */
+    dbg!(&frame.stack);
+    dbg!(&frame.locals);
     println!("Returned!");
 }
 pub fn saload(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn satore(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn sipush(frame: &mut StackFrame, inst: Instruction) {
+pub fn sipush(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let operands = inst.get_const_operands();
     let OperandType::Immediate(byte1) = operands[0] else {
         panic!("Operand [0] for sipush was not an immediate");
