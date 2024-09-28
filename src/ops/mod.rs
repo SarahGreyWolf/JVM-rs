@@ -2532,6 +2532,96 @@ pub fn pop2(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn putfield(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn putstatic(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ret(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ldc(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let OperandType::PoolIndex(index) = inst.get_const_operands()[0] else {
+        panic!(
+            "No PoolIndex found, instead found {:?}",
+            inst.get_const_operands()[0]
+        );
+    };
+    let Some(constant) = frame.pool.get(index as usize) else {
+        panic!("Failed to get constant at {index} from frame pool");
+    };
+    dbg!(&constant);
+
+    match constant {
+        runtime_pool::RuntimeConstant::SymbolicRef(sr) => match sr {
+            runtime_pool::SymbolicRef::Class(_) => todo!(),
+            runtime_pool::SymbolicRef::Interface(_) => todo!(),
+            runtime_pool::SymbolicRef::Array(_) => todo!(),
+            runtime_pool::SymbolicRef::Field(_, _, _) => todo!(),
+            runtime_pool::SymbolicRef::ClassMethod(_, _, _) => todo!(),
+            runtime_pool::SymbolicRef::InterfaceMethod(_, _, _) => todo!(),
+            runtime_pool::SymbolicRef::MethodHandle(_) => todo!(),
+            runtime_pool::SymbolicRef::MethodType(_) => todo!(),
+            runtime_pool::SymbolicRef::DynamicConst(_, _, _, _) => todo!(),
+            runtime_pool::SymbolicRef::DynamicCall(_, _, _, _) => todo!(),
+            runtime_pool::SymbolicRef::Null => todo!(),
+        },
+        runtime_pool::RuntimeConstant::StaticConstant(sc) => {
+            match sc {
+                runtime_pool::StaticConstant::String(s) => todo!(),
+                runtime_pool::StaticConstant::Integer(i) => todo!(),
+                runtime_pool::StaticConstant::Float(f) => {
+                    match f {
+                        runtime_pool::Decimal::Double(_) => {
+                            // FIXME: Probably has some java error
+                            unreachable!("Should not find a double where a float is expected")
+                        }
+                        runtime_pool::Decimal::Float(float) => {
+                            frame.stack.push(FrameValues::Float(*float))
+                        }
+                    }
+                }
+                runtime_pool::StaticConstant::Long(l) => todo!(),
+                runtime_pool::StaticConstant::Double(d) => match d {
+                    runtime_pool::Decimal::Float(_) => {
+                        unreachable!("Should not find a float where a double is expected")
+                    }
+                    runtime_pool::Decimal::Double(double) => {
+                        frame.stack.push(FrameValues::Double(*double))
+                    }
+                },
+            }
+        }
+        RuntimeConstant::Spacer => {}
+    }
+}
+pub fn ldc2_w(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let OperandType::PoolIndex(upper) = inst.get_const_operands()[0] else {
+        panic!(
+            "No PoolIndex found, instead found {:?}",
+            inst.get_const_operands()[0]
+        );
+    };
+    let OperandType::PoolIndex(lower) = inst.get_const_operands()[1] else {
+        panic!(
+            "No PoolIndex found, instead found {:?}",
+            inst.get_const_operands()[0]
+        );
+    };
+    let index = (upper as usize) << 8 | lower as usize;
+    let Some(constant) = frame.pool.get(index) else {
+        panic!("Failed to get constant at {index} from frame pool");
+    };
+    dbg!(&constant);
+
+    match constant {
+        runtime_pool::RuntimeConstant::StaticConstant(sc) => match sc {
+            runtime_pool::StaticConstant::Long(l) => frame.stack.push(FrameValues::Long(*l)),
+            runtime_pool::StaticConstant::Double(d) => match d {
+                runtime_pool::Decimal::Float(_) => {
+                    unreachable!("Should not find a float where a double is expected")
+                }
+                runtime_pool::Decimal::Double(double) => {
+                    frame.stack.push(FrameValues::Double(*double))
+                }
+            },
+            _other => panic!("Expected a Double, Long or dyn-computed Constant, got {_other:?}"),
+        },
+        _other => panic!("Expected a Double, Long or dyn-computed Constant, got {_other:?}"),
+    }
+}
 pub fn r#return(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     /*
        The current method must have return type void. If the
