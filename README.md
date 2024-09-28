@@ -1,6 +1,7 @@
-# JVM-rs (name pending)
+# Rather
 
-JVM-rs is a spec compliant Java Virtual Machine written in Rust.
+Rather is a spec compliant Java Virtual Machine written in Rust.
+The name is a play on replacing the J in Java with an R for Rust, Rava.
 
 ## Supported Spec Version
 Currently Java 17
