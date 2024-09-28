@@ -1,11 +1,24 @@
 pub mod mnemonics;
 
-use std::io::Cursor;
+use std::{
+    error::Error,
+    io::Cursor,
+    ops::Index,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
-use crate::stack_frame::StackFrame;
-use crate::vm::FrameValues;
+use crate::{
+    runtime_pool::SymbolicRef,
+    vm::{FrameValues, VM},
+};
+use crate::{
+    runtime_pool::{self, RuntimeConstant},
+    stack_frame::StackFrame,
+};
 use byteorder::ReadBytesExt;
 use jloader::{
+    attributes::AttributeInfo,
     class_file::ClassLoc,
     constants::{self, PoolConstants},
     descriptors::FieldDescriptor,
@@ -2052,7 +2065,6 @@ pub fn checkcast(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn d2f(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn d2i(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn d2l(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dadd(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn daload(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dastore(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dcmpg(frame: &mut StackFrame, inst: Instruction) { todo!() }
@@ -2060,20 +2072,10 @@ pub fn dcmpl(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dconst_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dconst_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ddiv(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dload(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dload_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dload_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dload_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dload_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dmul(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dneg(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn drem(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dreturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dstore(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dstore_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dstore_1(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dstore_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn dstore_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dsub(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dup(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn dup_x1(frame: &mut StackFrame, inst: Instruction) { todo!() }
@@ -2104,14 +2106,82 @@ pub fn frem(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn freturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn fstore(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn fstore_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn dadd(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Double(first)) = frame.stack.pop() else {
+        panic!("Top of Frame stack was empty or was not a Double");
+    };
+    let Some(FrameValues::Double(second)) = frame.stack.pop() else {
+        panic!("Top of Frame stack was empty was not a Double");
+    };
+    let result = first + second;
+    if result.is_nan() {
+        frame.stack.push(FrameValues::NaN);
+    } else {
+        frame.stack.push(FrameValues::Double(result));
+    }
+}
+pub fn dload(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let operands = inst.get_const_operands();
+    let OperandType::VarIndex(index) = operands[0] else {
+        panic!("Operand [0] for dload was not a var index");
+    };
+    let Some(FrameValues::Double(local)) = frame.locals.get(index as usize)
+    else {
+        panic!("Frame local[{index}] does not exist or was not a Double");
+    };
+    frame.stack.push(FrameValues::Double(*local));
+}
+pub fn dload_0(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Double(local)) = frame.locals.first() else {
+        panic!("Frame local[0] does not exist or was not a Double");
+    };
+    frame.stack.push(FrameValues::Double(*local));
+}
+pub fn dload_1(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Double(local)) = frame.locals.get(1) else {
+        panic!("Frame local[1] does not exist or was not a Double");
+    };
+    frame.stack.push(FrameValues::Double(*local));
+}
+pub fn dload_2(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Double(local)) = frame.locals.get(2) else {
+        panic!("Frame local[2] does not exist or was not a Double");
+    };
+    frame.stack.push(FrameValues::Double(*local));
+}
+pub fn dload_3(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Double(local)) = frame.locals.get(3) else {
+        panic!("Frame local[3] does not exist or was not a Double");
+    };
+    frame.stack.push(FrameValues::Double(*local));
+}
+pub fn dstore(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let operands = inst.get_const_operands();
+    let OperandType::VarIndex(index) = operands[0] else {
+        panic!("Operand [0] for dstore was not a var index");
+    };
+    let Some(mut local) = frame.locals.get_mut(index as usize) else {
+        panic!("Frame local[{index}] does not exist or was not a Double");
+    };
+    let Some(FrameValues::Double(top)) = frame.stack.pop() else {
+        panic!("Frame stack was empty or not a Double!");
+    };
+    *local = FrameValues::Double(top);
+}
+pub fn dstore_0(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     match frame.stack.pop() {
-        Some(FrameValues::Float(float)) => {
-            if let Some(mut local) = frame.locals.get_mut(1) {
-                *local = FrameValues::Float(float);
+        Some(FrameValues::Double(double)) => {
+            if let Some(mut local) = frame.locals.get_mut(0) {
+                *local = FrameValues::Double(double);
             } else {
-                frame.locals.insert(1, FrameValues::Float(float));
+                frame.locals.insert(0, FrameValues::Double(double));
             }
         }
+        _ => panic!("Frame stack was empty or top was not a double!"),
+    }
+}
+pub fn dstore_1(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    match frame.stack.pop() {
         Some(FrameValues::Double(double)) => {
             if let Some(mut local) = frame.locals.get_mut(1) {
                 *local = FrameValues::Double(double);
@@ -2119,26 +2189,58 @@ pub fn fstore_0(frame: &mut StackFrame, inst: Instruction) { todo!() }
                 frame.locals.insert(1, FrameValues::Double(double));
             }
         }
-        _ => panic!("Frame stack was empty or top was not a float!"),
+        _ => panic!("Frame stack was empty or top was not a double!"),
     }
 }
-pub fn fstore_2(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn fstore_3(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn fsub(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn getfield(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn getstatic(frame: &mut StackFrame, inst: Instruction) {
+pub fn dstore_2(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    match frame.stack.pop() {
+        Some(FrameValues::Double(double)) => {
+            if let Some(mut local) = frame.locals.get_mut(2) {
+                *local = FrameValues::Double(double);
+            } else {
+                frame.locals.insert(2, FrameValues::Double(double));
+            }
+        }
+        _ => panic!("Frame stack was empty or top was not a double!"),
+    }
+}
+pub fn dstore_3(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    match frame.stack.pop() {
+        Some(FrameValues::Double(double)) => {
+            if let Some(mut local) = frame.locals.get_mut(3) {
+                *local = FrameValues::Double(double);
+            } else {
+                frame.locals.insert(3, FrameValues::Double(double));
+            }
+        }
+        _ => panic!("Frame stack was empty or top was not a double!"),
+    }
+}
+pub fn f2d(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Float(float)) = frame.stack.pop() else {
+        panic!("Top of stack was not a Float or stack is empty");
+    };
+    frame.stack.push(FrameValues::Double(float as f64));
+}
+pub fn fload(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let operands = inst.get_const_operands();
-    let Some(OperandType::PoolIndex(byte1)) = operands.get(0) else {
-        panic!("Operand [0] for getstatic does not exist or was not a PoolIndex");
+    let OperandType::VarIndex(index) = operands[0] else {
+        panic!("Operand [0] for fload was not a var index");
     };
-    let Some(OperandType::PoolIndex(byte2)) = operands.get(1) else {
-        panic!("Operand [1] for getstatic does not exist or was not a PoolIndex");
+    let Some(FrameValues::Float(local)) = frame.locals.get(index as usize)
+    else {
+        panic!("Frame local[{index}] does not exist or was not a Float");
     };
-    let index: u16 = ((*byte1 as u16) << 8) | *byte2 as u16;
-
-    let Some(PoolConstants::Fieldref(field)) = frame.pool.get(index as usize) else {
-        panic!("Index {index} into Runtime Pool does not exist or is not a FieldRef");
+    frame.stack.push(FrameValues::Float(*local));
+}
+pub fn fload_0(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Float(local)) = frame.locals.first() else {
+        panic!("Frame local[0] does not exist or was not a Float");
     };
+    frame.stack.push(FrameValues::Float(*local));
 }
 pub fn goto(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn goto_w(frame: &mut StackFrame, inst: Instruction) { todo!() }
@@ -2149,6 +2251,85 @@ pub fn i2f(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn i2l(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn i2s(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn iadd(frame: &mut StackFrame, inst: Instruction) {
+pub fn fload_1(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Float(local)) = frame.locals.get(1) else {
+        panic!("Frame local[1] does not exist or was not a Float");
+    };
+    frame.stack.push(FrameValues::Float(*local));
+}
+pub fn fload_2(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Float(local)) = frame.locals.get(2) else {
+        panic!("Frame local[2] does not exist or was not a Float");
+    };
+    frame.stack.push(FrameValues::Float(*local));
+}
+pub fn fload_3(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Float(local)) = frame.locals.get(3) else {
+        panic!("Frame local[3] does not exist or was not a Float");
+    };
+    frame.stack.push(FrameValues::Float(*local));
+}
+pub fn fstore(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let operands = inst.get_const_operands();
+    let OperandType::VarIndex(index) = operands[0] else {
+        panic!("Operand [0] for dstore was not a var index");
+    };
+    let Some(mut local) = frame.locals.get_mut(index as usize) else {
+        panic!("Frame local[{index}] does not exist or was not a Float");
+    };
+    let Some(FrameValues::Float(top)) = frame.stack.pop() else {
+        panic!("Frame stack was empty or not a Float!");
+    };
+    *local = FrameValues::Float(top);
+}
+pub fn fstore_0(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    match frame.stack.pop() {
+        Some(FrameValues::Float(float)) => {
+            if let Some(mut local) = frame.locals.get_mut(0) {
+                *local = FrameValues::Float(float);
+            } else {
+                frame.locals.insert(0, FrameValues::Float(float));
+            }
+        }
+        _ => panic!("Frame stack was empty or top was not a float!"),
+    }
+}
+pub fn fstore_1(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    match frame.stack.pop() {
+        Some(FrameValues::Float(float)) => {
+            if let Some(mut local) = frame.locals.get_mut(1) {
+                *local = FrameValues::Float(float);
+            } else {
+                frame.locals.insert(1, FrameValues::Float(float));
+            }
+        }
+        _ => panic!("Frame stack was empty or top was not a float!"),
+    }
+}
+pub fn fstore_2(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    match frame.stack.pop() {
+        Some(FrameValues::Float(float)) => {
+            if let Some(mut local) = frame.locals.get_mut(2) {
+                *local = FrameValues::Float(float);
+            } else {
+                frame.locals.insert(2, FrameValues::Float(float));
+            }
+        }
+        _ => panic!("Frame stack was empty or top was not a float!"),
+    }
+}
+pub fn fstore_3(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    match frame.stack.pop() {
+        Some(FrameValues::Float(float)) => {
+            if let Some(mut local) = frame.locals.get_mut(3) {
+                *local = FrameValues::Float(float);
+            } else {
+                frame.locals.insert(3, FrameValues::Float(float));
+            }
+        }
+        _ => panic!("Frame stack was empty or top was not a float!"),
+    }
+}
     let Some(FrameValues::Int(a)) = frame.stack.pop() else {
         panic!("Value on top of stack was not int");
     };

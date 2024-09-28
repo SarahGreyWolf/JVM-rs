@@ -67,7 +67,7 @@ impl StackFrame {
                 Mnemonic::D2f => todo!(),
                 Mnemonic::D2i => todo!(),
                 Mnemonic::D2l => todo!(),
-                Mnemonic::Dadd => todo!(),
+                Mnemonic::Dadd => crate::ops::dadd(vm, self, instruction),
                 Mnemonic::Daload => todo!(),
                 Mnemonic::Dastore => todo!(),
                 Mnemonic::Dcmpg => todo!(),
@@ -75,20 +75,28 @@ impl StackFrame {
                 Mnemonic::Dconst0 => todo!(),
                 Mnemonic::Dconst1 => todo!(),
                 Mnemonic::Ddiv => todo!(),
-                Mnemonic::Dload => todo!(),
-                Mnemonic::Dload0 => todo!(),
-                Mnemonic::Dload1 => todo!(),
-                Mnemonic::Dload2 => todo!(),
-                Mnemonic::Dload3 => todo!(),
+                Mnemonic::Dload => crate::ops::dload(vm, self, instruction),
+                Mnemonic::Dload0 => crate::ops::dload_0(vm, self, instruction),
+                Mnemonic::Dload1 => crate::ops::dload_1(vm, self, instruction),
+                Mnemonic::Dload2 => crate::ops::dload_2(vm, self, instruction),
+                Mnemonic::Dload3 => crate::ops::dload_3(vm, self, instruction),
                 Mnemonic::Dmul => todo!(),
                 Mnemonic::Dneg => todo!(),
                 Mnemonic::Drem => todo!(),
                 Mnemonic::Dreturn => todo!(),
-                Mnemonic::Dstore => todo!(),
-                Mnemonic::Dstore0 => todo!(),
-                Mnemonic::Dstore1 => todo!(),
-                Mnemonic::Dstore2 => todo!(),
-                Mnemonic::Dstore3 => todo!(),
+                Mnemonic::Dstore => crate::ops::dstore(vm, self, instruction),
+                Mnemonic::Dstore0 => {
+                    crate::ops::dstore_0(vm, self, instruction)
+                }
+                Mnemonic::Dstore1 => {
+                    crate::ops::dstore_1(vm, self, instruction)
+                }
+                Mnemonic::Dstore2 => {
+                    crate::ops::dstore_2(vm, self, instruction)
+                }
+                Mnemonic::Dstore3 => {
+                    crate::ops::dstore_3(vm, self, instruction)
+                }
                 Mnemonic::Dsub => todo!(),
                 Mnemonic::Dup => todo!(),
                 Mnemonic::DupX1 => todo!(),
@@ -96,7 +104,7 @@ impl StackFrame {
                 Mnemonic::Dup2 => todo!(),
                 Mnemonic::Dup2X1 => todo!(),
                 Mnemonic::Dup2X2 => todo!(),
-                Mnemonic::F2d => todo!(),
+                Mnemonic::F2d => crate::ops::f2d(vm, self, instruction),
                 Mnemonic::F2i => todo!(),
                 Mnemonic::F2l => todo!(),
                 Mnemonic::Fadd => todo!(),
@@ -108,19 +116,28 @@ impl StackFrame {
                 Mnemonic::Fconst1 => todo!(),
                 Mnemonic::Fconst2 => todo!(),
                 Mnemonic::Fdiv => todo!(),
-                Mnemonic::Fload => todo!(),
-                Mnemonic::Fload0 => todo!(),
-                Mnemonic::Fload1 => todo!(),
-                Mnemonic::Fload2 => todo!(),
-                Mnemonic::Fload3 => todo!(),
+                Mnemonic::Fload => crate::ops::fload(vm, self, instruction),
+                Mnemonic::Fload0 => crate::ops::fload_0(vm, self, instruction),
+                Mnemonic::Fload1 => crate::ops::fload_1(vm, self, instruction),
+                Mnemonic::Fload2 => crate::ops::fload_2(vm, self, instruction),
+                Mnemonic::Fload3 => crate::ops::fload_3(vm, self, instruction),
                 Mnemonic::Fmul => todo!(),
                 Mnemonic::Fneg => todo!(),
                 Mnemonic::Frem => todo!(),
                 Mnemonic::Freturn => todo!(),
-                Mnemonic::Fstore => todo!(),
-                Mnemonic::Fstore0 => todo!(),
-                Mnemonic::Fstore2 => todo!(),
-                Mnemonic::Fstore3 => todo!(),
+                Mnemonic::Fstore => crate::ops::fstore(vm, self, instruction),
+                Mnemonic::Fstore0 => {
+                    crate::ops::fstore_0(vm, self, instruction)
+                }
+                Mnemonic::Fstore1 => {
+                    crate::ops::fstore_1(vm, self, instruction)
+                }
+                Mnemonic::Fstore2 => {
+                    crate::ops::fstore_2(vm, self, instruction)
+                }
+                Mnemonic::Fstore3 => {
+                    crate::ops::fstore_3(vm, self, instruction)
+                }
                 Mnemonic::Fsub => todo!(),
                 Mnemonic::Getfield => todo!(),
                 Mnemonic::Getstatic => todo!(),
