@@ -197,7 +197,7 @@ impl MethodInfo {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Class {
     /**
      * **magic**\
