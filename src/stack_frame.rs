@@ -43,7 +43,9 @@ impl StackFrame {
             match instruction.get_mnemonic() {
                 Mnemonic::Aaload => todo!(),
                 Mnemonic::Aastore => todo!(),
-                Mnemonic::AconstNull => todo!(),
+                Mnemonic::AconstNull => {
+                    crate::ops::aconst_null(vm, self, instruction)
+                }
                 Mnemonic::Aload => todo!(),
                 Mnemonic::Aload0 => todo!(),
                 Mnemonic::Aload1 => todo!(),
@@ -197,7 +199,7 @@ impl StackFrame {
                 Mnemonic::Iload1 => crate::ops::iload_1(vm, self, instruction),
                 Mnemonic::Iload2 => crate::ops::iload_2(vm, self, instruction),
                 Mnemonic::Iload3 => todo!(),
-                Mnemonic::Imul => todo!(),
+                Mnemonic::Imul => crate::ops::imul(vm, self, instruction),
                 Mnemonic::Ineg => todo!(),
                 Mnemonic::Instanceof => todo!(),
                 Mnemonic::Invokedynamic => todo!(),
@@ -207,7 +209,15 @@ impl StackFrame {
                 Mnemonic::Invokevirtual => todo!(),
                 Mnemonic::Ior => todo!(),
                 Mnemonic::Irem => todo!(),
-                Mnemonic::Ireturn => todo!(),
+                Mnemonic::Ireturn => {
+                    crate::ops::ireturn(
+                        vm,
+                        self,
+                        instruction,
+                        callee.as_mut().unwrap(),
+                    );
+                    return Ok(());
+                }
                 Mnemonic::Ishl => todo!(),
                 Mnemonic::Ishr => todo!(),
                 Mnemonic::Istore => todo!(),

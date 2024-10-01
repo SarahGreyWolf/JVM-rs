@@ -2514,9 +2514,16 @@ pub fn iload_3(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     };
     frame.stack.push(FrameValues::Int(*local));
 }
-pub fn imul(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn invokestatic(frame: &mut StackFrame, inst: Instruction) { todo!() }
-pub fn ireturn(frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn imul(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let Some(FrameValues::Int(lhs)) = frame.stack.pop() else {
+        panic!("Stack was empty");
+    };
+    let Some(FrameValues::Int(rhs)) = frame.stack.pop() else {
+        panic!("Stack was empty");
+    };
+    frame.stack.push(FrameValues::Int(lhs * rhs));
+}
 pub fn ineg(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn instanceof(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     todo!()
@@ -2535,6 +2542,20 @@ pub fn invokevirtual(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
 }
 pub fn ior(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn irem(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn ireturn(
+    vm: &mut VM,
+    frame: &mut StackFrame,
+    inst: Instruction,
+    callee: &mut StackFrame,
+) {
+    let Some(value) = frame.stack.pop() else {
+        panic!("Stack was empty!");
+    };
+    callee.stack.push(value);
+    let mut thread = &mut vm.threads[frame.thread_id];
+    // This should definite get the callee's id
+    thread.active_frame -= 1;
+}
 pub fn ishl(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ishr(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn istore(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
