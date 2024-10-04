@@ -8,10 +8,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{
-    runtime_pool::SymbolicRef,
-    vm::{FrameValues, VM},
-};
+use crate::data_types::{Decimal, StaticConstant, SymbolicRef};
+use crate::util::index_from_bytes;
+use crate::vm::{FrameValues, VM};
 use crate::{
     runtime_pool::{self, RuntimeConstant},
     stack_frame::StackFrame,
@@ -2016,9 +2015,7 @@ pub fn aastore(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     todo!()
 }
 pub fn aconst_null(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
-    frame
-        .stack
-        .push(FrameValues::Reference(runtime_pool::SymbolicRef::Null));
+    frame.stack.push(FrameValues::Reference(SymbolicRef::Null));
 }
 pub fn aload(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let OperandType::VarIndex(index) = inst.get_const_operands()[0] else {
@@ -2648,39 +2645,39 @@ pub fn ldc(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
 
     match constant {
         runtime_pool::RuntimeConstant::SymbolicRef(sr) => match sr {
-            runtime_pool::SymbolicRef::Class(_) => todo!(),
-            runtime_pool::SymbolicRef::Interface(_) => todo!(),
-            runtime_pool::SymbolicRef::Array(_) => todo!(),
-            runtime_pool::SymbolicRef::Field(_, _, _) => todo!(),
-            runtime_pool::SymbolicRef::ClassMethod(_, _, _) => todo!(),
-            runtime_pool::SymbolicRef::InterfaceMethod(_, _, _) => todo!(),
-            runtime_pool::SymbolicRef::MethodHandle(_) => todo!(),
-            runtime_pool::SymbolicRef::MethodType(_) => todo!(),
-            runtime_pool::SymbolicRef::DynamicConst(_, _, _, _) => todo!(),
-            runtime_pool::SymbolicRef::DynamicCall(_, _, _, _) => todo!(),
-            runtime_pool::SymbolicRef::Null => todo!(),
+            SymbolicRef::Class(_) => todo!(),
+            SymbolicRef::Interface(_) => todo!(),
+            SymbolicRef::Array(_) => todo!(),
+            SymbolicRef::Field(_, _, _) => todo!(),
+            SymbolicRef::ClassMethod(_, _, _) => todo!(),
+            SymbolicRef::InterfaceMethod(_, _, _) => todo!(),
+            SymbolicRef::MethodHandle(_) => todo!(),
+            SymbolicRef::MethodType(_) => todo!(),
+            SymbolicRef::DynamicConst(_, _, _, _) => todo!(),
+            SymbolicRef::DynamicCall(_, _, _, _) => todo!(),
+            SymbolicRef::Null => todo!(),
         },
         runtime_pool::RuntimeConstant::StaticConstant(sc) => {
             match sc {
-                runtime_pool::StaticConstant::String(s) => todo!(),
-                runtime_pool::StaticConstant::Integer(i) => todo!(),
-                runtime_pool::StaticConstant::Float(f) => {
+                StaticConstant::String(s) => todo!(),
+                StaticConstant::Integer(i) => todo!(),
+                StaticConstant::Float(f) => {
                     match f {
-                        runtime_pool::Decimal::Double(_) => {
+                        Decimal::Double(_) => {
                             // FIXME: Probably has some java error
                             unreachable!("Should not find a double where a float is expected")
                         }
-                        runtime_pool::Decimal::Float(float) => {
+                        Decimal::Float(float) => {
                             frame.stack.push(FrameValues::Float(*float))
                         }
                     }
                 }
-                runtime_pool::StaticConstant::Long(l) => todo!(),
-                runtime_pool::StaticConstant::Double(d) => match d {
-                    runtime_pool::Decimal::Float(_) => {
+                StaticConstant::Long(l) => todo!(),
+                StaticConstant::Double(d) => match d {
+                    Decimal::Float(_) => {
                         unreachable!("Should not find a float where a double is expected")
                     }
-                    runtime_pool::Decimal::Double(double) => {
+                    Decimal::Double(double) => {
                         frame.stack.push(FrameValues::Double(*double))
                     }
                 },
@@ -2691,19 +2688,19 @@ pub fn ldc(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
 }
 pub fn ldc_w(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn ldc2_w(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
-    let OperandType::PoolIndex(upper) = inst.get_const_operands()[0] else {
+    let OperandType::PoolIndex(index1) = inst.get_const_operands()[0] else {
         panic!(
             "No PoolIndex found, instead found {:?}",
             inst.get_const_operands()[0]
         );
     };
-    let OperandType::PoolIndex(lower) = inst.get_const_operands()[1] else {
+    let OperandType::PoolIndex(index2) = inst.get_const_operands()[1] else {
         panic!(
             "No PoolIndex found, instead found {:?}",
             inst.get_const_operands()[0]
         );
     };
-    let index = (upper as usize) << 8 | lower as usize;
+    let index = index_from_bytes(index1, index2);
     let Some(constant) = frame.pool.get(index) else {
         panic!("Failed to get constant at {index} from frame pool");
     };
@@ -2711,12 +2708,12 @@ pub fn ldc2_w(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
 
     match constant {
         runtime_pool::RuntimeConstant::StaticConstant(sc) => match sc {
-            runtime_pool::StaticConstant::Long(l) => frame.stack.push(FrameValues::Long(*l)),
-            runtime_pool::StaticConstant::Double(d) => match d {
-                runtime_pool::Decimal::Float(_) => {
+            StaticConstant::Long(l) => frame.stack.push(FrameValues::Long(*l)),
+            StaticConstant::Double(d) => match d {
+                Decimal::Float(_) => {
                     unreachable!("Should not find a float where a double is expected")
                 }
-                runtime_pool::Decimal::Double(double) => {
+                Decimal::Double(double) => {
                     frame.stack.push(FrameValues::Double(*double))
                 }
             },
