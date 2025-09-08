@@ -1,5 +1,5 @@
 use byteorder::ReadBytesExt;
-use jvm_rs::ops::{mnemonics::Mnemonic, Instruction, OperandType};
+use rather::ops::{mnemonics::Mnemonic, Instruction, OperandType};
 use std::{
     fs::File,
     io::{Cursor, Read, Write},
@@ -67,8 +67,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if ext != "class" {
             panic!("File provided was not a java class file");
         }
-        let mut class_file: File = File::open(file_path).expect("Failed to open file");
-        let mut contents = vec![00; class_file.metadata().unwrap().len() as usize];
+        let mut class_file: File =
+            File::open(file_path).expect("Failed to open file");
+        let mut contents =
+            vec![00; class_file.metadata().unwrap().len() as usize];
         class_file
             .read_exact(&mut contents)
             .expect("Failed to read bytes");
@@ -93,21 +95,33 @@ fn output_class(
 
     for attributes in &class.attributes {
         if let AttributeInfo::SourceFile(sf) = attributes {
-            if let PoolConstants::Utf8(title) = &class.constant_pool[sf.sourcefile_index as usize] {
-                writeln!(output_buffer, "Compiled from \"{}\"", String::from(title))?;
+            if let PoolConstants::Utf8(title) =
+                &class.constant_pool[sf.sourcefile_index as usize]
+            {
+                writeln!(
+                    output_buffer,
+                    "Compiled from \"{}\"",
+                    String::from(title)
+                )?;
             }
         }
     }
-    let this_class_name =
-        if let PoolConstants::Class(c) = &class.constant_pool[class.this_class as usize] {
-            if let PoolConstants::Utf8(cn) = &class.constant_pool[c.name_index as usize] {
-                String::from(cn)
-            } else {
-                unreachable!("Could not get class name from index {}", c.name_index);
-            }
+    let this_class_name = if let PoolConstants::Class(c) =
+        &class.constant_pool[class.this_class as usize]
+    {
+        if let PoolConstants::Utf8(cn) =
+            &class.constant_pool[c.name_index as usize]
+        {
+            String::from(cn)
         } else {
-            unreachable!("Could not get class from index {}", class.this_class);
-        };
+            unreachable!(
+                "Could not get class name from index {}",
+                c.name_index
+            );
+        }
+    } else {
+        unreachable!("Could not get class from index {}", class.this_class);
+    };
     let access_flags: String = class
         .access_flags
         .iter()
@@ -152,7 +166,10 @@ fn output_class(
         {
             String::from(field_name)
         } else {
-            unreachable!("Could not get field name from index {}", field.name_index);
+            unreachable!(
+                "Could not get field name from index {}",
+                field.name_index
+            );
         };
         let access_flags: String = field
             .access_flags
@@ -171,7 +188,9 @@ fn output_class(
             _type = String::from(t.clone());
         }
         if field.attributes_count == 0 || !args.constants {
-            let field_def = if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
+            let field_def = if let FieldDescriptor::ArrayType(ref name) =
+                type_descriptors[0]
+            {
                 format!("{access_flags} {name} {field_name};")
             } else {
                 format!("{access_flags} {_type} {field_name};")
@@ -192,7 +211,9 @@ fn output_class(
                         if let PoolConstants::Utf8(ref s) =
                             class.constant_pool[s.string_index as usize]
                         {
-                            if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
+                            if let FieldDescriptor::ArrayType(ref name) =
+                                type_descriptors[0]
+                            {
                                 format!(
                                     "{access_flags} {name} {field_name} = \"{}\";",
                                     String::from(s)
@@ -223,7 +244,9 @@ fn output_class(
                     PoolConstants::LongOrDoubleExtra => String::new(),
                     PoolConstants::Unknown => todo!(),
                 }
-            } else if let FieldDescriptor::ArrayType(ref name) = type_descriptors[0] {
+            } else if let FieldDescriptor::ArrayType(ref name) =
+                type_descriptors[0]
+            {
                 format!("{access_flags} {name} {field_name};")
             } else {
                 format!("{access_flags} {_type} {field_name};")
@@ -260,16 +283,20 @@ fn output_class(
         {
             continue;
         }
-        let method_name =
-            if let PoolConstants::Utf8(name) = &class.constant_pool[method.name_index as usize] {
-                let mut name = String::from(name);
-                if name == "<init>" {
-                    name = this_class_name.clone();
-                }
-                name
-            } else {
-                unreachable!("Could not get method name from index {}", method.name_index);
-            };
+        let method_name = if let PoolConstants::Utf8(name) =
+            &class.constant_pool[method.name_index as usize]
+        {
+            let mut name = String::from(name);
+            if name == "<init>" {
+                name = this_class_name.clone();
+            }
+            name
+        } else {
+            unreachable!(
+                "Could not get method name from index {}",
+                method.name_index
+            );
+        };
         let access_flags: String = method
             .access_flags
             .iter()
@@ -332,9 +359,10 @@ fn disassemble(
     constant_pool: &[PoolConstants],
     output_buffer: &mut Vec<u8>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut longest_mnemonic: usize = 0;
+    let mut most_opcodes: usize = 0;
+    let mut largest_code_length: usize = 20;
     for attrib in &method.attributes {
-        let mut longest_mnemonic: usize = 0;
-        let mut largest_code_length: usize = 0;
         if let AttributeInfo::Code(code) = attrib {
             let bytes = code.code.clone();
             let mut cursor = Cursor::new(bytes.as_slice());
@@ -347,6 +375,13 @@ fn disassemble(
                 if size > longest_mnemonic {
                     longest_mnemonic = size;
                 }
+                let mnemonic = Mnemonic::from(byte);
+                let ins =
+                    Instruction::from_mnemonic_cursor(&mnemonic, &mut cursor)?;
+                let length = ins.get_const_operands().len();
+                if length > most_opcodes {
+                    most_opcodes = length;
+                }
             }
         }
         if let AttributeInfo::Code(code) = attrib {
@@ -354,14 +389,18 @@ fn disassemble(
             let mut cursor = Cursor::new(bytes.as_slice());
             while let Ok(byte) = cursor.read_u8() {
                 let mnemonic = Mnemonic::from(byte);
-                let instruction = Instruction::from_mnemonic_cursor(&mnemonic, &mut cursor)?;
+                let instruction =
+                    Instruction::from_mnemonic_cursor(&mnemonic, &mut cursor)?;
                 if instruction.get_const_operands().is_empty() {
                     writeln!(
                         output_buffer,
-                        "\t\t{:in_width$}: {:m_width$}",
+                        "\t\t{:>in_width$}: {:>m_width$}",
                         cursor.position() - 1,
                         String::from(mnemonic),
-                        in_width = largest_code_length.checked_ilog10().unwrap_or(0) as usize,
+                        in_width =
+                            largest_code_length.checked_ilog10().unwrap_or(0)
+                                as usize
+                                + 1,
                         m_width = longest_mnemonic
                     )?;
                     continue;
@@ -391,7 +430,8 @@ fn disassemble(
                                 result_offset = (*offset as i32) << 8;
                             }
                         } else {
-                            result_offset = (result_offset as u32 | *offset as u32) as i32;
+                            result_offset =
+                                (result_offset as u32 | *offset as u32) as i32;
                         }
                     }
                     if let OperandType::VarIndex(index) = op {
@@ -421,20 +461,25 @@ fn disassemble(
                 }
                 write!(
                     output_buffer,
-                    "\t\t{:in_width$}: {:m_width$}",
-                    cursor.position() - instruction.get_const_operands().len() as u64 - 1,
+                    "\t\t{:>in_width$}: {:>m_width$}",
+                    cursor.position()
+                        - instruction.get_const_operands().len() as u64
+                        - 1,
                     String::from(mnemonic),
-                    in_width = largest_code_length.checked_ilog10().unwrap_or(0) as usize,
+                    in_width = largest_code_length.checked_ilog10().unwrap_or(1)
+                        as usize
+                        + 1,
                     m_width = longest_mnemonic
                 )?;
                 if result_pool_index > -1 {
-                    write!(output_buffer, " #{result_pool_index}\t\t\t")?;
+                    write!(output_buffer, " #{result_pool_index}")?;
                 }
                 if result_var_index > -1 {
                     write!(output_buffer, " {result_var_index}",)?;
                 }
                 if result_offset > -1 {
-                    let destination = ((cursor.position() - 1) as i32 + result_offset)
+                    let destination = ((cursor.position() - 1) as i32
+                        + result_offset)
                         - instruction.get_const_operands().len() as i32;
                     write!(output_buffer, " {destination}",)?;
                 }
@@ -444,9 +489,25 @@ fn disassemble(
                     }
                 }
                 if result_pool_index > -1 {
+                    let spacing = (constant_pool
+                        .len()
+                        .checked_ilog10()
+                        .unwrap_or(0)
+                        as usize
+                        + 2)
+                        + (constant_pool.len().checked_ilog10().unwrap_or(0)
+                            - result_pool_index.checked_ilog10().unwrap_or(0))
+                            as usize
+                        + most_opcodes
+                        + 8;
+                    write!(output_buffer, "{:->1$}", "", spacing)?;
                     let constant = &constant_pool[result_pool_index as usize];
-                    if !get_data_from_ref(this_class_name, constant_pool, constant, output_buffer)?
-                    {
+                    if !get_data_from_ref(
+                        this_class_name,
+                        constant_pool,
+                        constant,
+                        output_buffer,
+                    )? {
                         match constant {
                             PoolConstants::String(string) => {
                                 write!(output_buffer, "// String ")?;
@@ -468,10 +529,13 @@ fn disassemble(
                             }
                             PoolConstants::InvokeDynamic(dynamic) => {
                                 if let PoolConstants::NameAndType(nam_typ) =
-                                    &constant_pool[dynamic.name_and_type_index as usize]
+                                    &constant_pool
+                                        [dynamic.name_and_type_index as usize]
                                 {
-                                    let name = nam_typ.get_name(constant_pool)?;
-                                    let desc = nam_typ.get_descriptor(constant_pool)?;
+                                    let name =
+                                        nam_typ.get_name(constant_pool)?;
+                                    let desc = nam_typ
+                                        .get_descriptor(constant_pool)?;
                                     write!(
                                         output_buffer,
                                         "// InvokeDynamic #{}:{name}:{desc}",
@@ -480,7 +544,7 @@ fn disassemble(
                                 }
                             }
                             _ => {
-                                //dbg!(constant);
+                                dbg!(constant);
                             }
                         }
                     }
