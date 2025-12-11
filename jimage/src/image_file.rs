@@ -9,7 +9,7 @@ pub struct ImageFile {
     file: Option<File>,
     file_size: u64,
     pub header: Header,
-    index: Index,
+    pub index: Index,
 }
 
 /// Image File Header
@@ -38,7 +38,7 @@ pub struct Header {
  * The algorithm used for lookup is "A Practical Minimal Perfect Hashing Method"
  *  (http://homepages.dcc.ufmg.br/~nivio/papers/wea05.pdf).
  */
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Index {
     size: usize,
 
@@ -94,10 +94,7 @@ impl ImageFile {
 
         let header = Header::from_bytes(&header_buffer[..])?;
 
-        if header.magic != Header::IMAGE_MAGIC
-            || header.get_major_minor()
-                != (Header::MAJOR_VERSION, Header::MINOR_VERSION)
-        {
+        if !header.verify() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Header information was incorrect",
@@ -108,7 +105,7 @@ impl ImageFile {
         if (file_size as usize) < Index::index_size(&image.header) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "File Size was smaller than Header Size",
+                "File Size was smaller than Index Size",
             ));
         }
 
@@ -118,6 +115,7 @@ impl ImageFile {
         assert_eq!(Index::index_size(&image.header), read);
 
         let index = Index::from_bytes(&image.header, &index_data)?;
+        image.index = index;
 
         Ok(image)
     }
@@ -144,6 +142,12 @@ impl Header {
         Ok(header)
     }
 
+    fn verify(&self) -> bool {
+        self.magic == Header::IMAGE_MAGIC
+            && self.get_major_minor()
+                == (Header::MAJOR_VERSION, Header::MINOR_VERSION)
+    }
+
     pub fn get_major_minor(&self) -> (u32, u32) {
         (self.version >> 16, self.version & 0xFFFF)
     }
@@ -160,22 +164,22 @@ impl Index {
 
     pub fn from_bytes(header: &Header, bytes: &[u8]) -> io::Result<Index> {
         let mut cursor = Cursor::new(bytes);
-        let length = header.table_length as usize;
-        // Table starts at the beginning of header, the bytes we're reading is already beyond header
-        let offsets_table_offset = length * size_of::<i32>();
+
+        let table_offset = size_of::<Header>();
         let attribute_bytes_offset =
-            offsets_table_offset + length * size_of::<u32>();
+            table_offset + header.table_length as usize * size_of::<i32>() * 2;
+        // CDDE5
         let string_bytes_offset =
             attribute_bytes_offset + header.attributes_size as usize;
 
-        let mut redirect_table = vec![0i32; header.table_length as usize];
+        let mut redirect_table = vec![0i32; header.table_length as usize * 2];
         for i in 0..redirect_table.capacity() {
             redirect_table[i] = cursor.read_i32::<NativeEndian>()?;
         }
 
-        let offset_table_size = (offsets_table_offset
-            + length / size_of::<u32>())
-            - offsets_table_offset;
+        let offset_table_size = (attribute_bytes_offset
+            - cursor.position() as usize)
+            / size_of::<u32>();
 
         let mut attribute_offsets = vec![0u32; offset_table_size];
         for i in 0..attribute_offsets.capacity() {
@@ -188,13 +192,18 @@ impl Index {
 
         let mut strings: Vec<String> = vec![];
         let mut cur_string: Vec<u8> = vec![];
-        for _ in 0..header.strings_size {
+        // First is a null byte
+        for _ in 0..header.strings_size - table_offset as u32 {
             let next = cursor.read_u8()?;
             if next == b'\0' {
-                strings.push(String::from_utf8(cur_string).unwrap());
+                match String::from_utf8(cur_string.clone()) {
+                    Ok(string) => strings.push(string),
+                    Err(e) => eprintln!("{e}: {:02X?}", cur_string),
+                }
                 cur_string = vec![];
+            } else {
+                cur_string.push(next);
             }
-            cur_string.push(next);
         }
 
         Ok(Index {

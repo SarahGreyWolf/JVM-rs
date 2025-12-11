@@ -7,4 +7,5 @@ fn main() {
     let path = args.next().unwrap();
     let image = ImageFile::open(&path).unwrap();
     println!("{:#02X?}", image.header);
+    println!("{:?}", image.index);
 }
