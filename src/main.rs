@@ -16,10 +16,13 @@ use jloader::class_file;
 use jloader::constants::PoolConstants;
 use vm::VM;
 
+use crate::errors::exceptions::Exception;
+
 mod class;
+mod class_loader;
 /// [Data Types](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A62%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C590%2Cnull%5D)
 mod data_types;
-
+mod errors;
 mod ops;
 
 /// [Runtime Pool](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A2809%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C210.7%2Cnull%5D)
@@ -33,13 +36,25 @@ mod vm;
 mod temp_run;
 
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Exception> {
     let mut args = args();
     args.next().unwrap();
-    if args.len() != 1 {
-        panic!("You must provide the path to a java classfile");
+    if args.len() == 0 {
+        panic!(
+            "You must provide the classpath and the name of a java classfile"
+        );
     }
-    let file_path = PathBuf::from(args.next().unwrap());
+    let class_path = PathBuf::from(args.next().unwrap());
+    let class = args.next().unwrap();
+
+    let mut jvm = VM::new(None);
+    jvm.create_from_path(class_path.clone(), &class)?;
+    jvm.run()?;
+
+    // let mut method_area: Vec<class_file::ClassLoc> = vec![];
+
+
+    /*
     if let Some(ext) = file_path.extension() {
         if ext != "class" {
             panic!("File provided was not a java class file");
@@ -57,6 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         panic!("File provided did not have an extension.");
     }
+    */
     Ok(())
 
 fn javap(class: class_file::ClassFile) {

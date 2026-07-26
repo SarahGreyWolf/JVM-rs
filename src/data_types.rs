@@ -1,4 +1,4 @@
-use jloader::descriptors::FieldDescriptor;
+use jloader::{class_file::ClassLoc, descriptors::FieldDescriptor};
 
 use crate::runtime_pool::RuntimeConstant;
 
@@ -27,12 +27,10 @@ enum Primitives {
     ReturnAddress(u16),
 }
 
-impl Component for Primitives {}
-
 /// [Reference Types and Values](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A4175%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C295%2Cnull%5D)
 ///
 /// Their values are references to dynamically created class instances, arrays, or class instances or arrays that implement interfaces, respectively.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum SymbolicRef {
     /*
     •   A symbolic reference to a class or interface is derived from a
@@ -48,8 +46,8 @@ pub enum SymbolicRef {
           ASCII L character followed by the binary name of the element type followed
           by the ASCII ; character.
     */
-    Class(String),
-    Interface(String),
+    Class(String, Option<ClassLoc>),
+    Interface(String, Option<ClassLoc>),
     Array(FieldDescriptor),
     /*
        A symbolic reference to a field of a class or an interface is derived from a

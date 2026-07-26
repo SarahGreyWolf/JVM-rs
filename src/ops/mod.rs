@@ -8,17 +8,21 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::data_types::{Decimal, StaticConstant, SymbolicRef};
 use crate::util::index_from_bytes;
 use crate::vm::{FrameValues, VM};
+use crate::{
+    data_types::{Decimal, StaticConstant, SymbolicRef},
+    errors::exceptions::Exception,
+};
 use crate::{
     runtime_pool::{self, RuntimeConstant},
     stack_frame::StackFrame,
 };
 use byteorder::ReadBytesExt;
 use jloader::{
+    access_flags::MethodAccessFlags,
     attributes::AttributeInfo,
-    class_file::ClassLoc,
+    class_file::{ClassLoc, MethodInfo},
     constants::{self, PoolConstants},
     descriptors::FieldDescriptor,
 };
@@ -2391,6 +2395,77 @@ pub fn fsub(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn getfield(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     todo!()
 }
+pub fn getstatic(
+    frame: &mut StackFrame,
+    inst: Instruction,
+    class_path: &Path,
+    heap_ref: Arc<Mutex<Vec<u8>>>,
+    method_area_ref: Arc<Mutex<Vec<ClassLoc>>>,
+) -> Result<(), Exception> {
+    // let operands = inst.get_const_operands();
+    // let Some(OperandType::PoolIndex(byte1)) = operands.get(0) else {
+    //     panic!("Operand [0] for getstatic does not exist or was not a PoolIndex");
+    // };
+    // let Some(OperandType::PoolIndex(byte2)) = operands.get(1) else {
+    //     panic!("Operand [1] for getstatic does not exist or was not a PoolIndex");
+    // };
+    // let index: u16 = ((*byte1 as u16) << 8) | *byte2 as u16;
+
+    // let Some(PoolConstants::Fieldref(field)) = frame.pool.get(index as usize) else {
+    //     panic!("Index {index} into Runtime Pool does not exist or is not a FieldRef");
+    // };
+    // let Some(PoolConstants::NameAndType(nat)) = frame.pool.get(field.name_and_type_index as usize)
+    // else {
+    //     panic!("Index {index} into Runtime Pool does not exist or is not a NameAndType");
+    // };
+    // let Some(PoolConstants::Utf8(desc)) = frame.pool.get(nat.descriptor_index as usize) else {
+    //     panic!("Index {index} into Runtime Pool does not exist or is not a Utf8");
+    // };
+
+    // let descriptors: Option<Vec<FieldDescriptor>> = Option::from(desc.clone());
+    // let Some(desc_vec) = descriptors else {
+    //     panic!(
+    //         "Could not build a Vec<FieldDescriptor> from descriptor: {:?}",
+    //         desc
+    //     );
+    // };
+
+    // let mut class = String::new();
+
+    // for desc in desc_vec {
+    //     if let FieldDescriptor::ObjectType(class_name) = desc {
+    //         class = class_name;
+    //         break;
+    //     }
+    // }
+
+    // if class.is_empty() {
+    //     panic!("Field Descriptor did not reference the class it belongs too");
+    // }
+    // let mut method_area_ref_clone = method_area_ref.clone();
+    // let mut method_area = method_area_ref_clone.lock().unwrap();
+
+    // let split = class.split('/');
+    // if let Some(last) = split.last() {
+    //     for method in method_area.iter() {
+    //         if method.0 == last {
+    //             todo!("Class is already loaded don't load it again");
+    //         }
+    //     }
+    // }
+
+    // let class_found = crate::vm::find_class(class_path, &class, None)?;
+
+    // let mut heap_ref_clone = heap_ref.clone();
+
+    // // FIXME: ????????
+    // //        Thinks that it escapes the function if using ?
+    // let mut heap = heap_ref_clone.lock().unwrap();
+
+    // let loaded = crate::vm::load_class(&mut heap, &mut method_area, &class_found)?;
+
+    Ok(())
+}
 pub fn goto(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn goto_w(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     todo!()
@@ -2511,7 +2586,6 @@ pub fn iload_3(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     };
     frame.stack.push(FrameValues::Int(*local));
 }
-pub fn invokestatic(frame: &mut StackFrame, inst: Instruction) { todo!() }
 pub fn imul(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     let Some(FrameValues::Int(lhs)) = frame.stack.pop() else {
         panic!("Stack was empty");
@@ -2533,6 +2607,130 @@ pub fn invokeinterface(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
 }
 pub fn invokespecial(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     todo!()
+}
+pub fn invokestatic(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
+    let operands = inst.get_const_operands();
+    let OperandType::PoolIndex(index1) = operands[0] else {
+        panic!("Operand [0] for invokestatic was not a pool index");
+    };
+    let OperandType::PoolIndex(index2) = operands[1] else {
+        panic!("Operand [1] for invokestatic was not a pool index");
+    };
+    let index = index_from_bytes(index1, index2);
+    let Some(RuntimeConstant::SymbolicRef(SymbolicRef::ClassMethod(
+        method_name,
+        descriptor,
+        class_index,
+    ))) = frame.pool.get(index)
+    else {
+        // FIXME: This should also handle interface methods
+        panic!("Entry {index} of Runtime Pool was not a ClassMethod Ref");
+    };
+    let Some(RuntimeConstant::SymbolicRef(SymbolicRef::Class(class_name, loc))) =
+        frame.pool.get(*class_index)
+    else {
+        // FIXME: This should also handle interface methods
+        panic!("Entry {class_index} of Runtime Pool was not a Class Ref");
+    };
+
+    let heap = vm.heap.lock().unwrap();
+    let locs = vm.method_area.lock().unwrap();
+
+    let class_loc = locs.iter().find(|l| l.0 == *class_name).unwrap();
+    let class = crate::class::load_class_from_heap(&heap, class_loc).unwrap();
+    drop(locs);
+    drop(heap);
+
+    println!("InvokeStatic: {class_name}:{method_name}");
+
+    let mut new_frame = StackFrame {
+        pc: Some(0),
+        code: vec![],
+        locals: vec![],
+        stack: vec![],
+        pool: frame.pool.clone(),
+        const_pool: class.constant_pool.clone(),
+        thread_id: frame.thread_id,
+    };
+
+    let mut is_native = false;
+
+    let mut found_method: Option<MethodInfo> = None;
+    for method in &class.methods {
+        if let PoolConstants::Utf8(pool_name) =
+            class.get_from_constant_pool(method.name_index).unwrap()
+        {
+            if !method.access_flags.contains(&MethodAccessFlags::AccStatic) {
+                continue;
+            }
+            if String::from(pool_name) != *method_name {
+                continue;
+            }
+            if method.access_flags.contains(&MethodAccessFlags::AccNative) {
+                is_native = true;
+            }
+            for attr in &method.attributes {
+                if let AttributeInfo::Code(code) = attr {
+                    new_frame.code = code.code.clone();
+                    // Fill frame.locals with null references
+                    new_frame.locals =
+                        vec![
+                            FrameValues::Reference(SymbolicRef::Null);
+                            code.max_locals as usize
+                        ];
+                    new_frame.stack =
+                        Vec::with_capacity(code.max_stack as usize);
+                }
+            }
+            found_method = Some(method.clone());
+        }
+    }
+
+    if found_method.is_none() {
+        panic!("Could not find Method {method_name} in {class_name}");
+    }
+
+    if !is_native {
+        let mut thread = &mut vm.threads[frame.thread_id];
+        thread.frames.push(new_frame);
+        thread.active_frame = thread.frames.len() - 1;
+        let class_path = vm.class_path.clone().unwrap();
+        let heap_ref = thread.heap_ref.clone();
+        let method_area_ref = thread.method_area_ref.clone();
+        let mut f = thread.frames[thread.active_frame].clone();
+        f.run(vm, &class_path, heap_ref, method_area_ref, Some(frame));
+    } else {
+        //TODO: Platform Specific Stuff for Native Calling
+        #[cfg(windows)]
+        {
+            unsafe {
+                let lib =
+                    crate::platform::windows::load_library(Some("User32.dll"));
+
+                let arg_types =
+                    found_method.unwrap().get_params(&frame.const_pool);
+
+                let args: Vec<FrameValues> =
+                    frame.stack.drain(..arg_types.len()).collect();
+
+                if let Some(lib) = lib {
+                    crate::platform::windows::call_native(
+                        Some(lib),
+                        method_name,
+                        &args,
+                    );
+                } else {
+                    crate::platform::windows::call_native(
+                        None,
+                        method_name,
+                        &args,
+                    );
+                }
+            }
+        }
+
+        // unimplemented!();
+    }
 }
 pub fn invokevirtual(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     todo!()
@@ -2645,8 +2843,8 @@ pub fn ldc(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
 
     match constant {
         runtime_pool::RuntimeConstant::SymbolicRef(sr) => match sr {
-            SymbolicRef::Class(_) => todo!(),
-            SymbolicRef::Interface(_) => todo!(),
+            SymbolicRef::Class(_, _) => todo!(),
+            SymbolicRef::Interface(_, _) => todo!(),
             SymbolicRef::Array(_) => todo!(),
             SymbolicRef::Field(_, _, _) => todo!(),
             SymbolicRef::ClassMethod(_, _, _) => todo!(),
@@ -2775,7 +2973,47 @@ pub fn monitorexit(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
 pub fn multianewarray(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     todo!()
 }
-pub fn new(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) { todo!() }
+pub fn new(
+    vm: &mut VM,
+    frame: &mut StackFrame,
+    inst: Instruction,
+) -> Result<(), Exception> {
+    let OperandType::PoolIndex(index1) = inst.get_const_operands()[0] else {
+        panic!(
+            "No PoolIndex found, instead found {:?}",
+            inst.get_const_operands()[0]
+        );
+    };
+    let OperandType::PoolIndex(index2) = inst.get_const_operands()[1] else {
+        panic!(
+            "No PoolIndex found, instead found {:?}",
+            inst.get_const_operands()[0]
+        );
+    };
+    let index = index_from_bytes(index1, index2);
+    match frame.pool.get(index) {
+        Some(RuntimeConstant::SymbolicRef(SymbolicRef::Class(class, loc))) => {
+            if let Some(ref mut class_loader) = vm.class_loader {
+                class_loader
+                    .load_class(
+                        class.to_string(),
+                        vm.method_area.clone(),
+                        vm.heap.clone(),
+                    )
+                    .unwrap();
+                println!("{}", class_loader.debug())
+            }
+        }
+        Some(RuntimeConstant::SymbolicRef(SymbolicRef::Interface(
+            interface,
+            loc,
+        ))) => {}
+        _ => {
+            panic!("RuntimePool at index {index}, was not a symbolic ref to a class or interface or did not exist");
+        }
+    }
+    unimplemented!()
+}
 pub fn newarray(vm: &mut VM, frame: &mut StackFrame, inst: Instruction) {
     todo!()
 }

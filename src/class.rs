@@ -5,7 +5,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use jloader::class_file::{Class, ClassLoc};
+use jloader::{
+    class_file::{Class, ClassLoc},
+    constants::PoolConstants,
+};
 
 use crate::{
     errors::exceptions::{Exception, ExceptionError},
@@ -47,7 +50,7 @@ pub fn find_class(
                 entry.file_name()
             );
         };
-        if file_name == split.clone().last().unwrap() {
+        if file_name == split.clone().next_back().unwrap() {
             return Ok(entry.path());
         }
     }
@@ -83,6 +86,7 @@ pub fn load_class(
             // FIXME: Handle all panics (get rid of them for proper errors)
             panic!("Provided file was not a class");
         }
+        dbg!(path);
         let mut class_file: File =
             File::open(path).expect("Failed to open file");
         let Some(metadata) = class_file.metadata().ok() else {
@@ -132,6 +136,7 @@ pub fn link_class(
     method_area_ref: &mut Vec<ClassLoc>,
 ) {
     // Verification is already done by jloader
+
     // Throws: LinkageError
 
     // Preparation
@@ -141,6 +146,15 @@ pub fn link_class(
      *    C that can override (§5.4.5) an instance method declared in a superclass or
      *    superinterface <D, L2>, the Java Virtual Machine imposes loading constraints
      *    as follows.
+     *    Given that the return type of m is Tr, and that the formal parameter types of m
+     *    are Tf1, ..., Tfn:
+     *      m = int test(int a, int b)
+     *      Tr = int
+     *      Tf1 = a, Tf2 = b
+     *    If Tr not an array type, let T0 be Tr; otherwise, let T0 be the element type of Tr.
+     *    For i = 1 to n: If Tfi is not an array type, let Ti be Tfi; otherwise, let Ti be the
+     *    element type of Tfi.
+     *    Then TiL1 = TiL2 for i = 0 to n.
      */
 
     // Resolution
@@ -154,6 +168,7 @@ pub fn link_class(
 
 pub struct VmClass {
     runtime_pool: Vec<RuntimeConstant>,
+    constant_pool: Vec<PoolConstants>,
 }
 
 pub fn load_class_from_heap(

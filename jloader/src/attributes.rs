@@ -2,6 +2,7 @@
 #![allow(unused)]
 
 use core::num;
+use std::ops::Deref;
 use std::{error::Error, io::Cursor};
 
 use byteorder::{ReadBytesExt, BE};
@@ -10,6 +11,13 @@ use crate::access_flags::{module_flags, ParameterAccessFlags};
 use crate::constants::PoolConstants;
 
 use crate::errors::class_loading::{LoadingCause, LoadingError};
+
+#[derive(Clone, Debug)]
+pub struct Attribute {
+    pub attribute_name_index: u16,
+    pub attribute_length: u32,
+    info: AttributeInfo,
+}
 
 /// [Attributes](https://docs.oracle.com/javase/specs/jvms/se17/jvms17.pdf#%5B%7B%22num%22%3A1244%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C72%2C564%2Cnull%5D)
 #[derive(Clone, Debug)]

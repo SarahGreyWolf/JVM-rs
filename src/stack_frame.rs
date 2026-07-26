@@ -7,6 +7,7 @@ use std::{
 use jloader::{class_file::ClassLoc, constants::PoolConstants};
 
 use crate::{
+    errors::exceptions::Exception,
     ops::{mnemonics::Mnemonic, Instruction},
     runtime_pool::RuntimeConstant,
     vm::{FrameValues, Thread, VM},
@@ -36,9 +37,10 @@ impl StackFrame {
         heap_ref: Arc<Mutex<Vec<u8>>>,
         method_area_ref: Arc<Mutex<Vec<ClassLoc>>>,
         mut callee: Option<&mut StackFrame>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Exception> {
         loop {
-            let instruction = Instruction::from_frame(self)?;
+            let instruction =
+                Instruction::from_frame(self).map_err(Exception::Other)?;
             println!("Executing Instruction {:?}", instruction.get_mnemonic());
             match instruction.get_mnemonic() {
                 Mnemonic::Aaload => todo!(),
@@ -274,7 +276,7 @@ impl StackFrame {
                 Mnemonic::Monitorenter => todo!(),
                 Mnemonic::Monitorexit => todo!(),
                 Mnemonic::Multianewarray => todo!(),
-                Mnemonic::New => todo!(),
+                Mnemonic::New => crate::ops::new(vm, self, instruction)?,
                 Mnemonic::Newarray => todo!(),
                 Mnemonic::Nop => todo!(),
                 Mnemonic::Pop => todo!(),

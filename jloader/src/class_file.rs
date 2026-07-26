@@ -4,7 +4,9 @@ use std::io::Cursor;
 use std::error::Error;
 use std::ops::Range;
 
-use crate::access_flags::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
+use crate::access_flags::{
+    ClassAccessFlags, FieldAccessFlags, MethodAccessFlags,
+};
 use crate::attributes;
 use crate::attributes::AttributeInfo;
 use crate::constants::PoolConstants;
@@ -32,7 +34,12 @@ impl FieldInfo {
         constant_pool: &[PoolConstants],
     ) -> Result<FieldInfo, Box<dyn Error>> {
         let mut attributes = Vec::with_capacity(attributes_count as usize);
-        attributes::read_attributes(constant_pool, &mut attributes, cursor, None)?;
+        attributes::read_attributes(
+            constant_pool,
+            &mut attributes,
+            cursor,
+            None,
+        )?;
         Ok(FieldInfo {
             access_flags: FieldAccessFlags::from_u16(flags),
             name_index,
@@ -50,22 +57,31 @@ impl FieldInfo {
             "\tName: {:?}\n",
             constant_pool[self.name_index as usize]
         ));
-        if let PoolConstants::Utf8(desc) = &constant_pool[self.descriptor_index as usize] {
-            let desc_option: Option<Vec<FieldDescriptor>> = Option::from(desc.to_owned());
+        if let PoolConstants::Utf8(desc) =
+            &constant_pool[self.descriptor_index as usize]
+        {
+            let desc_option: Option<Vec<FieldDescriptor>> =
+                Option::from(desc.to_owned());
             if let Some(descriptors) = desc_option {
                 output.push_str(&format!("\tDescriptor: {descriptors:?}\n"));
             } else {
                 output.push_str("\tDescriptor: []\n");
             }
         }
-        output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
+        output.push_str(&format!(
+            "\tAttribute Count: {:?}\n",
+            self.attributes_count
+        ));
         output.push_str(&format!("\tAttributes: {:#?}\n", self.attributes));
         output.push_str("}\n");
 
         output
     }
 
-    pub fn get_type(&self, constant_pool: &[PoolConstants]) -> Vec<FieldDescriptor> {
+    pub fn get_type(
+        &self,
+        constant_pool: &[PoolConstants],
+    ) -> Vec<FieldDescriptor> {
         let descriptors = if let PoolConstants::Utf8(desc) =
             constant_pool[self.descriptor_index as usize].clone()
         {
@@ -76,7 +92,8 @@ impl FieldInfo {
                 self.descriptor_index
             );
         };
-        let Some(ref descriptors): Option<Vec<FieldDescriptor>> = descriptors else {
+        let Some(ref descriptors): Option<Vec<FieldDescriptor>> = descriptors
+        else {
             unreachable!(
                 "Could not get descriptor for field at index {}",
                 self.descriptor_index
@@ -107,7 +124,12 @@ impl MethodInfo {
         major_version: Option<u16>,
     ) -> Result<MethodInfo, Box<dyn Error>> {
         let mut attributes = Vec::with_capacity(attributes_count as usize);
-        attributes::read_attributes(constant_pool, &mut attributes, cursor, major_version)?;
+        attributes::read_attributes(
+            constant_pool,
+            &mut attributes,
+            cursor,
+            major_version,
+        )?;
         Ok(MethodInfo {
             access_flags: MethodAccessFlags::from_u16(flags),
             name_index,
@@ -125,15 +147,21 @@ impl MethodInfo {
             "\tName: {:?}\n",
             constant_pool[self.name_index as usize]
         ));
-        if let PoolConstants::Utf8(desc) = &constant_pool[self.descriptor_index as usize] {
-            let desc_option: Option<Vec<MethodDescriptor>> = Option::from(desc.to_owned());
+        if let PoolConstants::Utf8(desc) =
+            &constant_pool[self.descriptor_index as usize]
+        {
+            let desc_option: Option<Vec<MethodDescriptor>> =
+                Option::from(desc.to_owned());
             if let Some(descriptors) = desc_option {
                 output.push_str(&format!("\tDescriptor: {descriptors:?}\n"));
             } else {
                 output.push_str("\tDescriptor: []\n");
             }
         }
-        output.push_str(&format!("\tAttribute Count: {:?}\n", self.attributes_count));
+        output.push_str(&format!(
+            "\tAttribute Count: {:?}\n",
+            self.attributes_count
+        ));
         output.push_str(&format!("\tAttributes: {:#?}\n", self.attributes));
         output.push_str("}\n");
 
@@ -151,7 +179,8 @@ impl MethodInfo {
                 self.descriptor_index
             );
         };
-        let Some(descriptor): Option<Vec<MethodDescriptor>> = descriptors else {
+        let Some(descriptor): Option<Vec<MethodDescriptor>> = descriptors
+        else {
             unreachable!(
                 "Could not get descriptor for method at index {}",
                 self.descriptor_index
@@ -177,7 +206,8 @@ impl MethodInfo {
                 self.descriptor_index
             );
         };
-        let Some(descriptor): Option<Vec<MethodDescriptor>> = descriptors else {
+        let Some(descriptor): Option<Vec<MethodDescriptor>> = descriptors
+        else {
             unreachable!(
                 "Could not get descriptor for method at index {}",
                 self.descriptor_index
@@ -185,7 +215,9 @@ impl MethodInfo {
         };
         for values in descriptor {
             match values {
-                MethodDescriptor::ReturnDescriptor(ret) => return String::from(ret),
+                MethodDescriptor::ReturnDescriptor(ret) => {
+                    return String::from(ret)
+                }
                 MethodDescriptor::VoidReturn => return String::from("void"),
                 _ => continue,
             }
@@ -361,7 +393,8 @@ impl Class {
         let major_version = cursor.read_u16::<BE>()?;
         let constant_pool_count = cursor.read_u16::<BE>()?;
         let constant_pool = {
-            let mut pool = Vec::with_capacity((constant_pool_count - 1) as usize);
+            let mut pool =
+                Vec::with_capacity((constant_pool_count - 1) as usize);
             pool.push(PoolConstants::Unknown);
             constants::read_constant_pool(&mut pool, &mut cursor)?;
             pool.push(PoolConstants::Utf8(Utf8::from("StackMapTable")));
@@ -372,7 +405,8 @@ impl Class {
         let super_class = cursor.read_u16::<BE>()?;
         let interfaces_count = cursor.read_u16::<BE>()?;
         let interfaces = {
-            let mut interfaces: Vec<u16> = Vec::with_capacity(interfaces_count as usize);
+            let mut interfaces: Vec<u16> =
+                Vec::with_capacity(interfaces_count as usize);
             for _ in 0..interfaces_count {
                 interfaces.push(cursor.read_u16::<BE>()?);
             }
@@ -467,11 +501,15 @@ impl Class {
         ));
         for i in 0..self.constant_pool.len() {
             if i != 0 {
-                output.push_str(&format!("{i}: {:#?}\n", self.constant_pool[i]));
+                output
+                    .push_str(&format!("{i}: {:#?}\n", self.constant_pool[i]));
             }
         }
         output.push_str("]\n");
-        output.push_str(&format!("Class Access Flags: {:?}\n", self.access_flags));
+        output.push_str(&format!(
+            "Class Access Flags: {:?}\n",
+            self.access_flags
+        ));
         output.push_str(&format!("This Class Index: {}\n", self.this_class));
         output.push_str(&format!("Super Class Index: {}\n", self.super_class));
         output.push_str(&format!(
@@ -495,17 +533,24 @@ impl Class {
     }
 
     pub fn get_class_name(&self) -> Result<String, FormatError> {
-        if let PoolConstants::Class(class) = self.get_from_constant_pool(self.this_class)? {
+        if let PoolConstants::Class(class) =
+            self.get_from_constant_pool(self.this_class)?
+        {
             class.get_name(&self.constant_pool)
         } else {
             Err(FormatError::new(
-                FormatCause::InvalidConstant(self.constant_pool[self.this_class as usize].clone()),
+                FormatCause::InvalidConstant(
+                    self.constant_pool[self.this_class as usize].clone(),
+                ),
                 "Invalid constant for class_name this",
             ))
         }
     }
 
-    pub fn get_from_constant_pool(&self, index: u16) -> Result<&PoolConstants, FormatError> {
+    pub fn get_from_constant_pool(
+        &self,
+        index: u16,
+    ) -> Result<&PoolConstants, FormatError> {
         if index > self.constant_pool_count {
             return Err(FormatError::new(FormatCause::InvalidIndex(index), ""));
         }
@@ -525,7 +570,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
             ),
         ));
     }
-    if class.access_flags.contains(&ClassAccessFlags::AccModule) && class.access_flags.len() > 1 {
+    if class.access_flags.contains(&ClassAccessFlags::AccModule)
+        && class.access_flags.len() > 1
+    {
         return Err(FormatError::new(
             FormatCause::TooManyFlags,
             "Too many flags for a Module class",
@@ -544,7 +591,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
     for constant in &class.constant_pool {
         match constant {
             PoolConstants::Class(c) => {
-                let PoolConstants::Utf8(_) = class.get_from_constant_pool(c.name_index)? else {
+                let PoolConstants::Utf8(_) =
+                    class.get_from_constant_pool(c.name_index)?
+                else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(c.name_index),
                         "Class name_index was not a Utf8 Constant",
@@ -552,7 +601,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                 };
             }
             PoolConstants::String(s) => {
-                let PoolConstants::Utf8(_) = class.get_from_constant_pool(s.string_index)? else {
+                let PoolConstants::Utf8(_) =
+                    class.get_from_constant_pool(s.string_index)?
+                else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(s.string_index),
                         "String string_index was not a Utf8 Constant",
@@ -560,7 +611,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                 };
             }
             PoolConstants::Fieldref(f) => {
-                let PoolConstants::Class(_) = class.get_from_constant_pool(f.class_index)? else {
+                let PoolConstants::Class(_) =
+                    class.get_from_constant_pool(f.class_index)?
+                else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(f.class_index),
                         "Fieldref class_index was not a Class Constant",
@@ -582,7 +635,8 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                         "Fieldref name_and_type_index.descriptor_index was not a Utf8 Constant",
                     ));
                 };
-                let descriptor: Option<Vec<FieldDescriptor>> = Option::from(desc.clone());
+                let descriptor: Option<Vec<FieldDescriptor>> =
+                    Option::from(desc.clone());
                 if descriptor.is_none() {
                     return Err(FormatError::new(
                         FormatCause::InvalidDescriptor(String::from(desc)),
@@ -591,7 +645,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                 }
             }
             PoolConstants::Methodref(m) => {
-                let PoolConstants::Class(_) = class.get_from_constant_pool(m.class_index)? else {
+                let PoolConstants::Class(_) =
+                    class.get_from_constant_pool(m.class_index)?
+                else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(m.class_index),
                         "MethodRef class_index was not a Class Constant",
@@ -605,7 +661,8 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                         "MethodRef name_and_type_index was not a NameAndType Constant",
                     ));
                 };
-                let PoolConstants::Utf8(name) = class.get_from_constant_pool(nat.name_index)?
+                let PoolConstants::Utf8(name) =
+                    class.get_from_constant_pool(nat.name_index)?
                 else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(nat.descriptor_index),
@@ -620,10 +677,13 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                         "MethodRef name_and_type_index.descriptor_index was not a Utf8 Constant",
                     ));
                 };
-                let descriptor: Option<Vec<MethodDescriptor>> = Option::from(desc.clone());
+                let descriptor: Option<Vec<MethodDescriptor>> =
+                    Option::from(desc.clone());
                 if let Some(descrip) = descriptor {
                     let name = String::from(name);
-                    if name == "<init>" && !descrip.contains(&MethodDescriptor::VoidReturn) {
+                    if name == "<init>"
+                        && !descrip.contains(&MethodDescriptor::VoidReturn)
+                    {
                         println!("{descrip:?}");
                         return Err(FormatError::new(
                             FormatCause::InvalidDescriptor(String::from(desc)),
@@ -638,7 +698,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                 }
             }
             PoolConstants::InterfaceMethodref(im) => {
-                let PoolConstants::Class(_) = class.get_from_constant_pool(im.class_index)? else {
+                let PoolConstants::Class(_) =
+                    class.get_from_constant_pool(im.class_index)?
+                else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(im.class_index),
                         "InterfaceMethodref class_index was not a Class Constant",
@@ -660,7 +722,8 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                         "InterfaceMethodref name_and_type_index.descriptor_index was not a Utf8 Constant"
                     ));
                 };
-                let descriptor: Option<Vec<MethodDescriptor>> = Option::from(desc.clone());
+                let descriptor: Option<Vec<MethodDescriptor>> =
+                    Option::from(desc.clone());
                 if descriptor.is_none() {
                     return Err(FormatError::new(
                         FormatCause::InvalidDescriptor(String::from(desc)),
@@ -669,13 +732,16 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                 }
             }
             PoolConstants::NameAndType(nt) => {
-                let PoolConstants::Utf8(_) = class.get_from_constant_pool(nt.name_index)? else {
+                let PoolConstants::Utf8(_) =
+                    class.get_from_constant_pool(nt.name_index)?
+                else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(nt.name_index),
                         "NameAndType name_index was not a Utf8 Constant",
                     ));
                 };
-                let PoolConstants::Utf8(_) = class.get_from_constant_pool(nt.descriptor_index)?
+                let PoolConstants::Utf8(_) =
+                    class.get_from_constant_pool(nt.descriptor_index)?
                 else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(nt.descriptor_index),
@@ -708,8 +774,8 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                     }
                     6 | 7 => {
                         if class.major_version < 52 {
-                            let PoolConstants::Methodref(_) =
-                                class.get_from_constant_pool(mh.reference_index)?
+                            let PoolConstants::Methodref(_) = class
+                                .get_from_constant_pool(mh.reference_index)?
                             else {
                                 return Err(FormatError::new(
                                     FormatCause::InvalidIndex(mh.reference_index),
@@ -717,7 +783,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                                 ));
                             };
                         } else {
-                            match class.get_from_constant_pool(mh.reference_index)? {
+                            match class
+                                .get_from_constant_pool(mh.reference_index)?
+                            {
                                 PoolConstants::Methodref(_) => {}
                                 PoolConstants::InterfaceMethodref(_) => {}
                                 _ => {
@@ -743,14 +811,17 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                     }
                     _ => {
                         return Err(FormatError::new(
-                            FormatCause::InvalidReferenceKind(reference_kind_u8),
+                            FormatCause::InvalidReferenceKind(
+                                reference_kind_u8,
+                            ),
                             "MethodHandle reference kind was invalid",
                         ));
                     }
                 }
             }
             PoolConstants::MethodType(mt) => {
-                let PoolConstants::Utf8(_) = class.get_from_constant_pool(mt.descriptor_index)?
+                let PoolConstants::Utf8(_) =
+                    class.get_from_constant_pool(mt.descriptor_index)?
                 else {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(mt.descriptor_index),
@@ -777,7 +848,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                         "Missing BootstrapMethods attribute required by ConstantPool::Dynamic",
                     ));
                 };
-                if bm.bootstrap_methods.len() < d.bootstrap_method_attr_index as usize {
+                if bm.bootstrap_methods.len()
+                    < d.bootstrap_method_attr_index as usize
+                {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(d.name_and_type_index),
                         "Dynamic bootstrap_method_attr_index was not a valid index into BootstrapMethods attribute",
@@ -803,7 +876,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
                         "Missing BootstrapMethods attribute required by ConstantPool::Dynamic",
                     ));
                 };
-                if bm.bootstrap_methods.len() < id.bootstrap_method_attr_index as usize {
+                if bm.bootstrap_methods.len()
+                    < id.bootstrap_method_attr_index as usize
+                {
                     return Err(FormatError::new(
                         FormatCause::InvalidIndex(id.name_and_type_index),
                         "Dynamic bootstrap_method_attr_index was not a valid index into BootstrapMethods attribute",
@@ -812,7 +887,8 @@ fn check_format(class: Class) -> Result<(), FormatError> {
             }
             PoolConstants::Module(mo) => {
                 if class.access_flags.contains(&ClassAccessFlags::AccModule) {
-                    let PoolConstants::Utf8(_) = class.get_from_constant_pool(mo.name_index)?
+                    let PoolConstants::Utf8(_) =
+                        class.get_from_constant_pool(mo.name_index)?
                     else {
                         return Err(FormatError::new(
                             FormatCause::InvalidIndex(mo.name_index),
@@ -828,7 +904,9 @@ fn check_format(class: Class) -> Result<(), FormatError> {
             }
             PoolConstants::Package(p) => {
                 if class.access_flags.contains(&ClassAccessFlags::AccModule) {
-                    let PoolConstants::Utf8(_) = class.get_from_constant_pool(p.name_index)? else {
+                    let PoolConstants::Utf8(_) =
+                        class.get_from_constant_pool(p.name_index)?
+                    else {
                         return Err(FormatError::new(
                             FormatCause::InvalidIndex(p.name_index),
                             "Module name_index was not a Utf8 Constant",
@@ -851,11 +929,13 @@ fn check_format(class: Class) -> Result<(), FormatError> {
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClassLoc(pub String, pub Range<usize>);
 
 impl ClassLoc {
-    pub fn new(class_name: String, range: Range<usize>) -> ClassLoc { ClassLoc(class_name, range) }
+    pub fn new(class_name: String, range: Range<usize>) -> ClassLoc {
+        ClassLoc(class_name, range)
+    }
 }
 
 impl From<(ClassLoc, &[u8])> for Class {
