@@ -35,7 +35,6 @@ mod vm;
 // FIXME: Remove Later
 mod temp_run;
 
-
 fn main() -> Result<(), Exception> {
     let mut args = args();
     args.next().unwrap();
@@ -52,7 +51,6 @@ fn main() -> Result<(), Exception> {
     jvm.run()?;
 
     // let mut method_area: Vec<class_file::ClassLoc> = vec![];
-
 
     /*
     if let Some(ext) = file_path.extension() {
@@ -74,122 +72,4 @@ fn main() -> Result<(), Exception> {
     }
     */
     Ok(())
-
-fn javap(class: class_file::ClassFile) {
-    const SPACING: &str = "    ";
-    for attributes in class.attributes {
-        if let AttributeInfo::SourceFile(sf) = attributes {
-            if let ConstantPool::Utf8(title) = &class.constant_pool[sf.sourcefile_index as usize] {
-                println!("Compiled from \"{}\"", String::from(title));
-            }
-        }
-    }
-    let class_name = if let ConstantPool::Class(c) = &class.constant_pool[class.this_class as usize]
-    {
-        if let ConstantPool::Utf8(cn) = &class.constant_pool[c.name_index as usize] {
-            String::from(cn)
-        } else {
-            unreachable!("Could not get class name from index {}", c.name_index);
-        }
-    } else {
-        unreachable!("Could not get class from index {}", class.this_class);
-    };
-    let access_flags: String = class
-        .access_flags
-        .iter()
-        .map(|flag| {
-            if *flag != access_flags::ClassAccessFlags::AccSuper {
-                String::from(flag)
-            } else {
-                "".into()
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(" ")
-        .trim()
-        .to_string();
-    let mut class_def = format!("{access_flags} class {class_name} {{");
-    class_def = class_def.trim().to_string();
-    println!("{class_def}");
-    for field in class.fields {
-        for attrib in field.clone().attributes {
-            let access_flags: String = field
-                .access_flags
-                .iter()
-                .map(String::from)
-                .collect::<Vec<String>>()
-                .join(" ")
-                .trim()
-                .to_string();
-            let field_name = if let ConstantPool::Utf8(field_name) =
-                &class.constant_pool[field.name_index as usize]
-            {
-                String::from(field_name)
-            } else {
-                unreachable!("Could not get field name from index {}", field.name_index);
-            };
-            let mut _type = field.get_type(&class.constant_pool);
-            _type = _type.trim_start_matches('[').to_string();
-            _type = _type.trim_start_matches('L').to_string();
-            let field_def = format!("{access_flags} {_type} {field_name};");
-            println!("{SPACING}{field_def}");
-            // if let AttributeInfo::ConstantValue(v) = attrib {
-
-            // } else {continue;}
-        }
-    }
-    for method in class.methods {
-        let method_name =
-            if let ConstantPool::Utf8(name) = &class.constant_pool[method.name_index as usize] {
-                let mut name = String::from(name);
-                if name == "<init>" {
-                    name = class_name.clone();
-                }
-                name
-            } else {
-                unreachable!("Could not get method name from index {}", method.name_index);
-            };
-        let access_flags: String = method
-            .access_flags
-            .iter()
-            .map(|flag| {
-                if *flag == MethodAccessFlags::AccVarArgs
-                    || *flag == MethodAccessFlags::AccSynthetic
-                {
-                    " ".into()
-                } else {
-                    flag.into()
-                }
-            })
-            .collect::<Vec<String>>()
-            .join(" ")
-            .trim()
-            .to_string();
-        if method_name == "<clinit>" {
-            println!("{SPACING}{access_flags} {{}};");
-        } else {
-            let params = method
-                .get_params(&class.constant_pool)
-                .iter()
-                .filter(|param| !param.is_empty())
-                .cloned()
-                .collect::<Vec<String>>()
-                .join(", ");
-            let return_type = method.get_return(&class.constant_pool);
-            let mut method_def = if method_name == class_name {
-                format!(
-                    "{access_flags} {method_name}({params});",
-                    params = params.trim_matches(',').trim_start_matches('L')
-                )
-            } else {
-                format!(
-                    "{access_flags} {return_type} {method_name}({params});",
-                    params = params.trim_matches(',').trim_start_matches('L')
-                )
-            };
-            method_def = method_def.trim().to_string();
-            println!("{SPACING}{method_def}");
-        }
-    }
-    println!("}}");
 }
